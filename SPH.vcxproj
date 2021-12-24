@@ -88,11 +88,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Users\Vojcek\Desktop\SKOOL\Masterster_03\GPU\SPH\SPH\Dependencies\glfw-3.3.6.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <AdditionalLibraryDirectories>C:\Users\Vojcek\Desktop\SKOOL\Masterster_03\GPU\SPH\SPH\Dependencies\glfw-3.3.6.bin.WIN64\lib-vc2019;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;glfw3dll.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -103,6 +106,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Users\Vojcek\Desktop\SKOOL\Masterster_03\GPU\SPH\SPH\Dependencies\glfw-3.3.6.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -110,6 +114,8 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <AdditionalLibraryDirectories>C:\Users\Vojcek\Desktop\SKOOL\Masterster_03\GPU\SPH\SPH\Dependencies\glfw-3.3.6.bin.WIN64\lib-vc2019;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;glfw3dll.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -118,10 +124,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Users\Vojcek\Desktop\SKOOL\Masterster_03\GPU\SPH\SPH\GL\imgui;C:\Users\Vojcek\Desktop\SKOOL\Masterster_03\GPU\SPH\SPH\GL\glm;C:\Users\Vojcek\Desktop\SKOOL\Masterster_03\GPU\SPH\SPH\GL\GLFW\include;C:\Users\Vojcek\Desktop\SKOOL\Masterster_03\GPU\SPH\SPH\GL\GLEW\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Users\Vojcek\Desktop\SKOOL\Masterster_03\GPU\SPH\SPH\GL\imgui;C:\Users\Vojcek\Desktop\SKOOL\Masterster_03\GPU\SPH\SPH\GL\GLEW\lib\Release\x64;C:\Users\Vojcek\Desktop\SKOOL\Masterster_03\GPU\SPH\SPH\GL\GLFW\lib-vc2019;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;glfw3dll.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -132,16 +141,36 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Users\Vojcek\Desktop\SKOOL\Masterster_03\GPU\SPH\SPH\GL\imgui;C:\Users\Vojcek\Desktop\SKOOL\Masterster_03\GPU\SPH\SPH\GL\glm;C:\Users\Vojcek\Desktop\SKOOL\Masterster_03\GPU\SPH\SPH\GL\GLFW\include;C:\Users\Vojcek\Desktop\SKOOL\Masterster_03\GPU\SPH\SPH\GL\GLEW\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Users\Vojcek\Desktop\SKOOL\Masterster_03\GPU\SPH\SPH\GL\imgui;C:\Users\Vojcek\Desktop\SKOOL\Masterster_03\GPU\SPH\SPH\GL\GLEW\lib\Release\x64;C:\Users\Vojcek\Desktop\SKOOL\Masterster_03\GPU\SPH\SPH\GL\GLFW\lib-vc2019;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;glfw3dll.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="GL\imgui\backends\imgui_impl_glfw.cpp" />
+    <ClCompile Include="GL\imgui\backends\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="GL\imgui\imgui.cpp" />
+    <ClCompile Include="GL\imgui\imgui_demo.cpp" />
+    <ClCompile Include="GL\imgui\imgui_draw.cpp" />
+    <ClCompile Include="GL\imgui\imgui_tables.cpp" />
+    <ClCompile Include="GL\imgui\imgui_widgets.cpp" />
     <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="GL\imgui\backends\imgui_impl_glfw.h" />
+    <ClInclude Include="GL\imgui\backends\imgui_impl_opengl3.h" />
+    <ClInclude Include="GL\imgui\imconfig.h" />
+    <ClInclude Include="GL\imgui\imgui.h" />
+    <ClInclude Include="GL\imgui\imgui_internal.h" />
+    <ClInclude Include="GL\imgui\imstb_rectpack.h" />
+    <ClInclude Include="GL\imgui\imstb_textedit.h" />
+    <ClInclude Include="GL\imgui\imstb_truetype.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
