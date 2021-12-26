@@ -49,6 +49,7 @@ using namespace glm;
 #include <vector>
 #include <chrono>
 #include <iostream>
+#include <unordered_set>
 
 struct MyVec2 {
 	float x;
@@ -125,21 +126,104 @@ struct Particle {
 	float rho;
 	float p;
 
-	Particle(float _x, float _y) :
+	int id;
+
+	Particle(float _x, float _y, int _id) :
 		position(_x, _y),
 		velocity(0.f, 0.f),
 		force(0.f, 0.f),
 		rho(0),
-		p(0.0f)
+		p(0.0f),
+		id(_id)
 	{ }
 };
+
+std::vector<Particle> particles;
+
+struct ParticleGrid {
+	std::vector<std::unordered_set<int>> grid;
+
+	int dimX;
+	int dimY;
+
+	ParticleGrid() {
+		dimX = -1;
+		dimY = -1;
+	}
+
+	ParticleGrid(int _dimX, int _dimY) :
+		dimX(_dimX),
+		dimY(_dimY)
+	{
+		grid.resize(dimX * dimY);
+	}
+
+	void Add(int particleID) {
+		// compute where in grid particle should be based on position
+		int x = particles[particleID].position.x;
+		int y = particles[particleID].position.y;
+
+		grid[Index2Dto1D(x, y)].insert(particleID);
+	}
+
+	void Clear() {
+		for (int i = 0; i < dimX * dimY; i++) {
+			grid[i].clear();
+		}
+	}
+
+	std::vector<int> GetNeighbourParticlesIndices(int index) {
+		std::vector<int> neighbourCells = GetNeighbourCellIndices(index);
+		std::vector<int> neigbours;
+
+		for (int neighbourIndex : neighbourCells) {
+			for (int particleID : grid[neighbourIndex]) {
+				neigbours.push_back(particleID);
+			}
+		}
+
+		return neigbours;
+	}
+
+	std::vector<int> GetNeighbourCellIndices(int index) {
+		std::vector<int> neighbours;
+		std::pair<int, int> index2D = Index1Dto2D(index);
+
+
+		for (int x = -1; x <= 1; x++) {
+			for (int y = -1; y <= 1; y++) {
+				int newX = index2D.first + x;
+				int newY = index2D.second + y;
+
+				if (newX > 0 && newX < dimX && newY > 0 && newY < dimY) {
+					neighbours.push_back(Index2Dto1D(newX, newY));
+				}
+			}
+		}
+
+		return neighbours;
+	}
+
+	int Index2Dto1D(int x, int y) {
+		return x + y * dimX;
+	}
+
+	std::pair<int, int> Index1Dto2D(int index) {
+		int x = index / dimX;
+		int y = index % dimX;
+
+		return std::make_pair(x, y);
+	}
+};
+
+ParticleGrid particleGrid;
 
 #define PIXEL_FORMAT GL_RGB
 
 const int WINDOW_WIDTH = 1280;
 const int WINDOW_HEIGHT = 720;
-const double VIEW_WIDTH = 1.5 * WINDOW_WIDTH;
-const double VIEW_HEIGHT = 1.5 * WINDOW_HEIGHT;
+const double VIEW_WIDTH = 1.5f * WINDOW_WIDTH;
+const double VIEW_HEIGHT = 1.5f * WINDOW_HEIGHT;
 
 const int PARTICLES = 200;
 const int MAX_PARTICLES = 5000;
@@ -173,8 +257,6 @@ static void error_callback(int error, const char* description)
 	fputs(description, stderr);
 }
 
-std::vector<Particle> particles;
-
 double  t;
 double  t_old = 0.f;
 double  dt;
@@ -188,12 +270,20 @@ void InitSPH() {
 		for (float x = VIEW_WIDTH / 4; x <= VIEW_WIDTH / 2; x += H) {
 			if (particles.size() < PARTICLES) {
 				float jitter = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-				particles.emplace_back(x + jitter, y);
+				particles.emplace_back(x + jitter, y, particles.size());
 			}
 			else {
 				return;
 			}
 		}
+	}
+}
+
+void UpdateGrid() {
+	particleGrid.Clear();
+
+	for (Particle& p : particles) {
+		particleGrid.Add(p.id);
 	}
 }
 
@@ -245,6 +335,7 @@ void ComputeForces() {
 	for (Particle& pi : particles) {
 		MyVec2 fpress(0.f, 0.f);
 		MyVec2 fvisc(0.f, 0.f);
+
 		for (Particle& pj : particles) {
 			if (&pi == &pj) {
 				continue;
@@ -270,6 +361,8 @@ void Update(float deltaTime) {
 	ComputeForces();
 
 	Integrate(deltaTime);
+
+	UpdateGrid();
 }
 
 void Render(GLFWwindow* window) {
@@ -305,7 +398,7 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 			for (float y = VIEW_HEIGHT / 1.5f - VIEW_HEIGHT / 5.f; y < VIEW_HEIGHT / 1.5f + VIEW_HEIGHT / 5.f; y += H * 0.95f) {
 				for (float x = VIEW_WIDTH / 2.f - VIEW_HEIGHT / 5.f; x <= VIEW_WIDTH / 2.f + VIEW_HEIGHT / 5.f; x += H * 0.95f) {
 					if (placed++ < BLOCK_PARTICLES && particles.size() < MAX_PARTICLES) {
-						particles.push_back(Particle(x, y));
+						particles.push_back(Particle(x, y, particles.size()));
 					}
 				}
 			}
@@ -426,6 +519,10 @@ int main(void)
 
 
 	InitSPH();
+	int dimX = VIEW_WIDTH / H;
+	int dimY = VIEW_HEIGHT / H;
+	particleGrid = ParticleGrid(dimX, dimY);
+	UpdateGrid();
 
 	// Loop until the user closes the window 
 	while (!glfwWindowShouldClose(window))
