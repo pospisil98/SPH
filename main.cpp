@@ -96,10 +96,10 @@ std::ostream& operator<<(std::ostream& os, MyVec2& v) {
 
 #define PIXEL_FORMAT GL_RGB
 
-const int WINDOW_WIDTH = 1280;
-const int WINDOW_HEIGHT = 720;
-const double VIEW_WIDTH = 1.5f * WINDOW_WIDTH;
-const double VIEW_HEIGHT = 1.5f * WINDOW_HEIGHT;
+int WINDOW_WIDTH = 1280;
+int WINDOW_HEIGHT = 720;
+double VIEW_WIDTH = 1.5f * WINDOW_WIDTH;
+double VIEW_HEIGHT = 1.5f * WINDOW_HEIGHT;
 
 const int PARTICLES = 100;
 const int MAX_PARTICLES = 5000;
@@ -280,6 +280,7 @@ ImVec4 particlesColor = ImVec4(0.f, 0.f, 0.f, 1.0f);
 
 void InitSPH() {
 	std::cout << "Init dam break with " << PARTICLES << " particles" << std::endl;
+
 	for (float y = EPS; y < VIEW_HEIGHT - EPS * 2.f; y += H) {
 		for (float x = VIEW_WIDTH / 4; x <= VIEW_WIDTH / 2; x += H) {
 			if (particles.size() < PARTICLES) {
@@ -446,7 +447,7 @@ void Render(GLFWwindow* window) {
 	glEnd();
 }
 
-static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
 		if (particles.size() >= MAX_PARTICLES) {
@@ -482,9 +483,39 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 	else if (key == GLFW_KEY_D && action == GLFW_PRESS) {
 		G.x = GRAVITY_VAL;
 		G.y = 0.0f;
-	}
-	else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+	} else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, GL_TRUE);
+	}
+}
+
+void window_size_callback(GLFWwindow* window, int width, int height)
+{
+	// Update OpenGL viewport
+	int fbWidth, fbHeight;
+	glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
+	glViewport(0, 0, fbWidth, fbHeight);
+
+	int ogWidth = VIEW_WIDTH;
+	int ogHeight = VIEW_HEIGHT;
+
+	// Update window properties
+	WINDOW_WIDTH = width * 1.5f;
+	WINDOW_HEIGHT = height * 1.5f;
+	VIEW_WIDTH = 1.5f * WINDOW_WIDTH;
+	VIEW_HEIGHT = 1.5f * WINDOW_HEIGHT;
+
+	// rescale positions of particles
+	for (Particle& p : particles) {
+		p.position.x = (p.position.x * VIEW_WIDTH) / ogWidth;
+		p.position.y = (p.position.y * VIEW_HEIGHT) / ogHeight;
+	}
+
+	// Update uniform grid
+	int dimX = (VIEW_WIDTH + EPS) / (2.f * H);
+	int dimY = (VIEW_HEIGHT + EPS) / (2.f * H);
+	particleGrid = ParticleGrid(dimX, dimY);
+	if (accelerateCPU) {
+		particleGrid.Update();
 	}
 }
 
@@ -551,7 +582,9 @@ int main(void)
 
 	// Make the window's context current
 	glfwMakeContextCurrent(window);
+
 	glfwSetKeyCallback(window, key_callback);
+	glfwSetWindowSizeCallback(window, window_size_callback);
 
 	InitGL();
 
