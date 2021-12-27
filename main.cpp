@@ -1,27 +1,3 @@
-/*
-
-
-
-int main(int argc, char** argv)
-{
-	glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-	glutInit(&argc, argv);
-
-	glutCreateWindow("Smoothed Particle Hydrodynamics");
-	
-	glutDisplayFunc(Render);
-	glutIdleFunc(Update);
-	glutKeyboardFunc(Keyboard);
-
-	InitGL();
-	InitSPH();
-
-	glutMainLoop();
-	return 0;
-}
-*/
-
 // Include standard headers
 #include <stdio.h>
 #include <stdlib.h>
@@ -118,6 +94,34 @@ std::ostream& operator<<(std::ostream& os, MyVec2& v) {
 	return os << "< " << v.x << ", " << v.y << ">" << std::endl;
 }
 
+#define PIXEL_FORMAT GL_RGB
+
+const int WINDOW_WIDTH = 1280;
+const int WINDOW_HEIGHT = 720;
+const double VIEW_WIDTH = 1.5f * WINDOW_WIDTH;
+const double VIEW_HEIGHT = 1.5f * WINDOW_HEIGHT;
+
+const int PARTICLES = 100;
+const int MAX_PARTICLES = 5000;
+const int BLOCK_PARTICLES = 400;
+
+bool accelerateCPU = true;
+
+// "Particle-Based Fluid Simulation for Interactive Applications" by Müller et al.
+// solver parameters
+float GRAVITY_VAL = 9.81f;
+MyVec2 G(0.f, -GRAVITY_VAL);	// external (gravitational) forces
+float REST_DENS = 300.f;		// rest density
+float GAS_CONST = 2000.f;		// const for equation of state
+float H = 16.f;					// kernel radius
+float HSQ = H * H;				// radius^2 for optimization
+float MASS = 2.5f;				// assume all particles have the same mass
+float VISC = 200.f;				// viscosity constant
+float DT = 0.0007f;				// integration timestep
+
+float EPS = H;
+float BOUND_DAMPING = -0.5f;
+
 struct Particle {
 	MyVec2 position;
 	MyVec2 velocity;
@@ -127,6 +131,7 @@ struct Particle {
 	float p;
 
 	int id;
+	int gridCellID;
 
 	Particle(float _x, float _y, int _id) :
 		position(_x, _y),
@@ -135,7 +140,9 @@ struct Particle {
 		rho(0),
 		p(0.0f),
 		id(_id)
-	{ }
+	{
+		gridCellID = 0;
+	}
 };
 
 std::vector<Particle> particles;
@@ -159,11 +166,27 @@ struct ParticleGrid {
 	}
 
 	void Add(int particleID) {
-		// compute where in grid particle should be based on position
-		int x = particles[particleID].position.x;
-		int y = particles[particleID].position.y;
+		/*
+		if (particleID == 0) {
+			std::cout << "BREAK" << std::endl;
+		}
+		*/
+		
+		int index = GetGridCellIndexFromParticleIndex(particleID);
 
-		grid[Index2Dto1D(x, y)].insert(particleID);
+		//std::cout << "inserting " << particleID << " in cell " << index << std::endl;
+
+		particles[particleID].gridCellID = index;
+
+		grid[index].insert(particleID);
+	}
+
+	void Update() {
+		Clear();
+
+		for (Particle& p : particles) {
+			Add(p.id);
+		}
 	}
 
 	void Clear() {
@@ -172,30 +195,49 @@ struct ParticleGrid {
 		}
 	}
 
-	std::vector<int> GetNeighbourParticlesIndices(int index) {
-		std::vector<int> neighbourCells = GetNeighbourCellIndices(index);
-		std::vector<int> neigbours;
+	int GetGridCellIndexFromParticleIndex(int particleID) {
+		int x = particles[particleID].position.x / (2.f * H);
+		int y = particles[particleID].position.y / (2.f * H);
+
+		int index = Index2Dto1D(x, y);
+
+		if (index > grid.size()) {
+			std::cout << "OJOJ" << std::endl;
+		}
+
+		return Index2Dto1D(x, y);
+	}
+
+	void GetNeighbourParticlesIndices(int particleIndex, std::vector<int>& indices) {
+		int gridIndex = particles[particleIndex].gridCellID;
+		std::vector<int> neighbourCells = GetNeighbourCellIndices(gridIndex);
+
+		/*
+		for (int i = 0; i < neighbourCells.size(); i++) {
+			std::pair<int, int> p = Index1Dto2D(neighbourCells[i]);
+			std::cout << p.first << ", " << p.second << std::endl;
+		}
+		*/
+
+		indices.clear();
 
 		for (int neighbourIndex : neighbourCells) {
 			for (int particleID : grid[neighbourIndex]) {
-				neigbours.push_back(particleID);
+				indices.push_back(particleID);
 			}
 		}
-
-		return neigbours;
 	}
 
 	std::vector<int> GetNeighbourCellIndices(int index) {
 		std::vector<int> neighbours;
 		std::pair<int, int> index2D = Index1Dto2D(index);
 
-
 		for (int x = -1; x <= 1; x++) {
 			for (int y = -1; y <= 1; y++) {
 				int newX = index2D.first + x;
 				int newY = index2D.second + y;
 
-				if (newX > 0 && newX < dimX && newY > 0 && newY < dimY) {
+				if (newX >= 0 && newX < dimX && newY >= 0 && newY < dimY) {
 					neighbours.push_back(Index2Dto1D(newX, newY));
 				}
 			}
@@ -209,42 +251,14 @@ struct ParticleGrid {
 	}
 
 	std::pair<int, int> Index1Dto2D(int index) {
-		int x = index / dimX;
-		int y = index % dimX;
+		int x = index % dimX;
+		int y = index / dimX;
 
 		return std::make_pair(x, y);
 	}
 };
 
 ParticleGrid particleGrid;
-
-#define PIXEL_FORMAT GL_RGB
-
-const int WINDOW_WIDTH = 1280;
-const int WINDOW_HEIGHT = 720;
-const double VIEW_WIDTH = 1.5f * WINDOW_WIDTH;
-const double VIEW_HEIGHT = 1.5f * WINDOW_HEIGHT;
-
-const int PARTICLES = 200;
-const int MAX_PARTICLES = 5000;
-const int BLOCK_PARTICLES = 250;
-
-std::chrono::high_resolution_clock::time_point lastUpdate;
-
-// "Particle-Based Fluid Simulation for Interactive Applications" by Müller et al.
-// solver parameters
-float GRAVITY_VAL = 9.81f;
-MyVec2 G(0.f, -GRAVITY_VAL);	// external (gravitational) forces
-float REST_DENS = 300.f;		// rest density
-float GAS_CONST = 2000.f;		// const for equation of state
-float H = 16.f;					// kernel radius
-float HSQ = H * H;				// radius^2 for optimization
-float MASS = 2.5f;				// assume all particles have the same mass
-float VISC = 200.f;				// viscosity constant
-float DT = 0.0007f;				// integration timestep
-
-float EPS = H;
-float BOUND_DAMPING = -0.5f;
 
 // smoothing kernels defined in Müller and their gradients
 // adapted to 2D per "SPH Based Shallow Water Simulation" by Solenthaler et al.
@@ -279,18 +293,20 @@ void InitSPH() {
 	}
 }
 
-void UpdateGrid() {
-	particleGrid.Clear();
+void GetNeighbourParticlesIndicesTrivial(std::vector<int>& indices) {
+	indices.clear();
 
-	for (Particle& p : particles) {
-		particleGrid.Add(p.id);
+	for (int i = 0; i < particles.size(); i++) {
+		indices.push_back(i);
 	}
 }
 
 void Integrate(float deltaTime) {
 	for (Particle& p : particles) {
 		// forward Euler integration
-		p.velocity += deltaTime * p.force / p.rho;
+		if (p.rho > 0.0f) {
+			p.velocity += deltaTime * p.force / p.rho;
+		}
 		p.position += deltaTime * p.velocity;
 
 		// enforce boundary conditions
@@ -319,11 +335,28 @@ void Integrate(float deltaTime) {
 void ComputeDensityPressure() {
 	for (Particle& pi : particles) {
 		pi.rho = 0.f;
-		for (Particle& pj : particles) {
+
+		std::vector<int> potentialNeighbours;
+		if (accelerateCPU) {
+			particleGrid.GetNeighbourParticlesIndices(pi.id, potentialNeighbours);
+
+			/*
+			if (potentialNeighbours.size() > 0) {
+				std::cout << "WE HAVE SOME NEIGHBOURS"<< std::endl;
+			}
+			*/
+		} else {
+			GetNeighbourParticlesIndicesTrivial(potentialNeighbours);
+		}
+
+		for (int index : potentialNeighbours) {
+			Particle pj = particles[index];
+
 			MyVec2 rij = pj.position - pi.position;
 			float r2 = rij.LengthSquared();
 
 			if (r2 < HSQ) {
+				//std::cout << "Collision in Density for id: " << pi.id << " and " << pj.id << std::endl;
 				pi.rho += MASS * POLY6 * pow(HSQ - r2, 3.f);
 			}
 		}
@@ -336,8 +369,23 @@ void ComputeForces() {
 		MyVec2 fpress(0.f, 0.f);
 		MyVec2 fvisc(0.f, 0.f);
 
-		for (Particle& pj : particles) {
-			if (&pi == &pj) {
+		std::vector<int> potentialNeighbours;
+		if (accelerateCPU) {
+			particleGrid.GetNeighbourParticlesIndices(pi.id, potentialNeighbours);
+			
+			/*
+			if (potentialNeighbours.size() > 0) {
+				std::cout << "WE HAVE SOME NEIGHBOURS" << std::endl;
+			}
+			*/
+		}
+		else {
+			GetNeighbourParticlesIndicesTrivial(potentialNeighbours);
+		}
+
+		for (int index : potentialNeighbours) {
+			Particle pj = particles[index];
+			if (pi.id == pj.id) {
 				continue;
 			}
 
@@ -345,6 +393,7 @@ void ComputeForces() {
 			float r = rij.Length();
 
 			if (r < H) {
+				//std::cout << "Collision in forces for id: " << pi.id << " and " << pj.id << std::endl;
 				// compute pressure force contribution
 				fpress += -rij.Normalized() * MASS * (pi.p + pj.p) / (2.f * pj.rho) * SPIKY_GRAD * pow(H - r, 3.f);
 				// compute viscosity force contribution
@@ -357,12 +406,23 @@ void ComputeForces() {
 }
 
 void Update(float deltaTime) {
+	if (accelerateCPU) {
+		particleGrid.Update();
+
+		/*
+		for (int i = 0; i < particleGrid.grid.size(); i++) {
+			if (particleGrid.grid[i].size() > 0) {
+				std::pair<int, int> pos = particleGrid.Index1Dto2D(i);
+				std::cout << "Grid cell " << i << "(" << pos.first << ", " << pos.second << ")" << "has " << particleGrid.grid[i].size() << std::endl;
+			}
+		}
+		*/
+	}
+
 	ComputeDensityPressure();
 	ComputeForces();
 
 	Integrate(deltaTime);
-
-	UpdateGrid();
 }
 
 void Render(GLFWwindow* window) {
@@ -371,16 +431,15 @@ void Render(GLFWwindow* window) {
 	glLoadIdentity();
 	glOrtho(0, VIEW_WIDTH, 0, VIEW_HEIGHT, 0, 1);
 
-	glColor4f(0.2f, 0.6f, 1.f, 1);
+	glColor4f(
+		particlesColor.x * particlesColor.w,
+		particlesColor.y * particlesColor.w,
+		particlesColor.z * particlesColor.w,
+		particlesColor.w
+	);
 	glBegin(GL_POINTS);
 
 	for (Particle& p : particles) {
-		glColor4f(
-			particlesColor.x * particlesColor.w,
-			particlesColor.y * particlesColor.w,
-			particlesColor.z * particlesColor.w,
-			particlesColor.w
-		);
 		glVertex2f(p.position.x, p.position.y);
 	}
 
@@ -519,10 +578,12 @@ int main(void)
 
 
 	InitSPH();
-	int dimX = VIEW_WIDTH / H;
-	int dimY = VIEW_HEIGHT / H;
+
+	// Do grid initialization everytime to be able to witch acceleration on and off
+	int dimX = (VIEW_WIDTH + EPS) / (2.f * H);
+	int dimY = (VIEW_HEIGHT + EPS) / (2.f * H);
 	particleGrid = ParticleGrid(dimX, dimY);
-	UpdateGrid();
+
 
 	// Loop until the user closes the window 
 	while (!glfwWindowShouldClose(window))
@@ -565,6 +626,8 @@ int main(void)
 		if (ImGui::Button("Reset parameters to default")) {
 			SetDefaultParameters();
 		}
+
+		ImGui::Checkbox("Accelerate CPU version with uniform grid", &accelerateCPU);
 
 		ImGui::ColorEdit3("Background color", (float*)&clearColor); 
 		ImGui::ColorEdit3("Particles color", (float*)&particlesColor); 
