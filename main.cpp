@@ -1,3 +1,9 @@
+// Include CUDA headers
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
+
+#include "kernel.cuh"
+
 // Include standard headers
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,7 +23,6 @@ using namespace glm;
 #include "GL/imgui/imgui.h"
 #include "GL/imgui/backends/imgui_impl_glfw.h"
 #include "GL/imgui/backends/imgui_impl_opengl3.h"
-
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -409,15 +414,6 @@ void ComputeForces() {
 void Update(float deltaTime) {
 	if (accelerateCPU) {
 		particleGrid.Update();
-
-		/*
-		for (int i = 0; i < particleGrid.grid.size(); i++) {
-			if (particleGrid.grid[i].size() > 0) {
-				std::pair<int, int> pos = particleGrid.Index1Dto2D(i);
-				std::cout << "Grid cell " << i << "(" << pos.first << ", " << pos.second << ")" << "has " << particleGrid.grid[i].size() << std::endl;
-			}
-		}
-		*/
 	}
 
 	ComputeDensityPressure();
@@ -616,6 +612,30 @@ int main(void)
 	int dimX = (VIEW_WIDTH + EPS) / (2.f * H);
 	int dimY = (VIEW_HEIGHT + EPS) / (2.f * H);
 	particleGrid = ParticleGrid(dimX, dimY);
+
+
+	const int arraySize = 5;
+	const int a[arraySize] = { 1, 2, 3, 4, 5 };
+	const int b[arraySize] = { 10, 20, 30, 40, 50 };
+	int c[arraySize] = { 0 };
+
+	// Add vectors in parallel.
+	cudaError_t cudaStatus = addWithCuda(c, a, b, arraySize);
+	if (cudaStatus != cudaSuccess) {
+		fprintf(stderr, "addWithCuda failed!");
+		return 1;
+	}
+
+	printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
+		c[0], c[1], c[2], c[3], c[4]);
+
+	// cudaDeviceReset must be called before exiting in order for profiling and
+	// tracing tools such as Nsight and Visual Profiler to show complete traces.
+	cudaStatus = cudaDeviceReset();
+	if (cudaStatus != cudaSuccess) {
+		fprintf(stderr, "cudaDeviceReset failed!");
+		return 1;
+	}
 
 
 	// Loop until the user closes the window 
