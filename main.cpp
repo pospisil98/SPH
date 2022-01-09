@@ -42,7 +42,6 @@ using namespace glm;
 
 #define PIXEL_FORMAT GL_RGB
 
-
 static void error_callback(int error, const char* description)
 {
 	fputs(description, stderr);
@@ -61,7 +60,7 @@ void Render(GLFWwindow* window) {
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	glLoadIdentity();
-	glOrtho(0, VIEW_WIDTH, 0, VIEW_HEIGHT, 0, 1);
+	glOrtho(0, simulation.VIEW_WIDTH, 0, simulation.VIEW_HEIGHT, 0, 1);
 
 	glColor4f(
 		particlesColor.x * particlesColor.w,
@@ -114,16 +113,31 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
 	glViewport(0, 0, fbWidth, fbHeight);
 
-	int ogWidth = VIEW_WIDTH;
-	int ogHeight = VIEW_HEIGHT;
+	int ogWidth = simulation.VIEW_WIDTH;
+	int ogHeight = simulation.VIEW_HEIGHT;
 
 	// Update window properties
-	WINDOW_WIDTH = width * 1.5f;
-	WINDOW_HEIGHT = height * 1.5f;
-	VIEW_WIDTH = 1.5f * WINDOW_WIDTH;
-	VIEW_HEIGHT = 1.5f * WINDOW_HEIGHT;
+	simulation.WINDOW_WIDTH = width * 1.5f;
+	simulation.WINDOW_HEIGHT = height * 1.5f;
+	simulation.VIEW_WIDTH = 1.5f * simulation.WINDOW_WIDTH;
+	simulation.VIEW_HEIGHT = 1.5f * simulation.WINDOW_HEIGHT;
 
-	simulation.windowRescaleRoutine(ogWidth, ogHeight);
+	//simulation.windowRescaleRoutine(ogWidth, ogHeight);
+		// rescale positions of particles
+	for (Particle& p : simulation.particles) {
+		p.position.x = (p.position.x * simulation.VIEW_WIDTH) / ogWidth;
+		p.position.y = (p.position.y * simulation.VIEW_HEIGHT) / ogHeight;
+	}
+
+	// Update uniform grid
+	int dimX = (simulation.VIEW_WIDTH + EPS) / (2.f * H);
+	int dimY = (simulation.VIEW_HEIGHT + EPS) / (2.f * H);
+
+	simulation.particleGrid.Initialize(dimX, dimY, simulation.particles);
+
+	if (simulation.useSpatialGrid) {
+		simulation.particleGrid.Update();
+	}
 }
 
 void InitGL() {
@@ -211,7 +225,7 @@ int main(void)
 #endif
 
 	// Create a windowed mode window and its OpenGL context 
-	GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Smoothed Particle Hydrodynamics", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(simulation.WINDOW_WIDTH, simulation.WINDOW_HEIGHT, "Smoothed Particle Hydrodynamics", NULL, NULL);
 	if (!window) {
 		glfwTerminate();
 		return -1;

@@ -17,7 +17,15 @@ struct Simulation {
 	bool simulateOnGPU = false;
 	bool fixedTimestep = true;
 
+	int WINDOW_WIDTH = 1280;
+	int WINDOW_HEIGHT = 720;
+	double VIEW_WIDTH = 1.5f * WINDOW_WIDTH;
+	double VIEW_HEIGHT = 1.5f * WINDOW_HEIGHT;
+
 	int MAX_PARTICLES = 5000;
+	int DAM_BREAK_PARTICLES = 100;
+	int BLOCK_PARTICLES = 400;
+
 	float REST_DENS = 300.f;		// rest density
 	float GAS_CONST = 2000.f;		// const for equation of state
 	float MASS = 2.5f;				// assume all particles have the same mass

@@ -5,15 +5,6 @@
 
 #include "MyVec2.h"
 
-static int WINDOW_WIDTH = 1280;
-static int WINDOW_HEIGHT = 720;
-static double VIEW_WIDTH = 1.5f * WINDOW_WIDTH;
-static double VIEW_HEIGHT = 1.5f * WINDOW_HEIGHT;
-
-static int DAM_BREAK_PARTICLES = 100;
-static int MAX_PARTICLES = 5000;
-static int BLOCK_PARTICLES = 400;
-
 // "Particle-Based Fluid Simulation for Interactive Applications" by Müller et al.
 // solver parameters
 static float GRAVITY_VAL = 9.81f;
