@@ -91,9 +91,3 @@ std::vector<int> ParticleGrid::GetNeighbourCellIndices(int index) {
 
 	return neighbours;
 }
-
-void ParticleGrid::SetParticleNeighbours() {
-	for (int i = 0; i < particles.size(); i++) {
-
-	}
-}

@@ -36,8 +36,6 @@ struct ParticleGrid {
 
 	void Clear();
 
-	void SetParticleNeighbours();
-
 	int GetGridCellIndexFromParticleIndex(int particleID);
 
 	void GetNeighbourParticlesIndices(int particleIndex, std::vector<int>& indices);

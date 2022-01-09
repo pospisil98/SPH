@@ -3,6 +3,7 @@
 #include "device_launch_parameters.h"
 
 #include "kernel.cuh"
+#include "CudaKernels.cuh"
 
 // Include standard headers
 #include <stdio.h>
@@ -40,8 +41,9 @@ using namespace glm;
 
 #define PIXEL_FORMAT GL_RGB
 
-bool accelerateCPU = true;
-bool simlateOnGPU = false;
+bool useSpatialGrid = true;
+bool simulateOnGPU = false;
+bool fixedTimestep = true;
 
 std::vector<Particle> particles;
 ParticleGrid particleGrid(particles);
@@ -118,7 +120,7 @@ void ComputeDensityPressure() {
 		pi.rho = 0.f;
 
 		std::vector<int> potentialNeighbours;
-		if (accelerateCPU) {
+		if (useSpatialGrid) {
 			particleGrid.GetNeighbourParticlesIndices(pi.id, potentialNeighbours);
 
 			/*
@@ -151,7 +153,7 @@ void ComputeForces() {
 		MyVec2 fvisc(0.f, 0.f);
 
 		std::vector<int> potentialNeighbours;
-		if (accelerateCPU) {
+		if (useSpatialGrid) {
 			particleGrid.GetNeighbourParticlesIndices(pi.id, potentialNeighbours);
 			
 			/*
@@ -187,15 +189,29 @@ void ComputeForces() {
 }
 
 void Update(float deltaTime) {
-	if (accelerateCPU) {
-		particleGrid.Update();
-		particleGrid.SetParticleNeighbours();
+	if (simulateOnGPU) {
+		if (useSpatialGrid) {
+			particleGrid.Update();
+		}
+
+		// copy grid to GPU
+
+		// copy particles to GPU
+
+		// kernels
+
+		// copy particles back
+
+	} else {
+		if (useSpatialGrid) {
+			particleGrid.Update();
+		}
+
+		ComputeDensityPressure();
+		ComputeForces();
+
+		Integrate(deltaTime);
 	}
-
-	ComputeDensityPressure();
-	ComputeForces();
-
-	Integrate(deltaTime);
 }
 
 void Render(GLFWwindow* window) {
@@ -288,7 +304,7 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 
 	particleGrid.Initialize(dimX, dimY, particles);
 	
-	if (accelerateCPU) {
+	if (useSpatialGrid) {
 		particleGrid.Update();
 	}
 }
@@ -314,6 +330,45 @@ void SetDefaultParameters() {
 
 	EPS = H;
 	BOUND_DAMPING = -0.5f;
+}
+
+void RenderGUIControlPanel() {
+	// Start the Dear ImGui frame
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+	ImGui::NewFrame();
+
+	ImGui::Begin("SPH settings", NULL, ImGuiWindowFlags_AlwaysAutoResize);
+
+	ImGui::Checkbox("FixedTimestep", &fixedTimestep);
+	if (fixedTimestep) {
+		ImGui::InputFloat("Delta Time", &DT);
+	}
+
+	ImGui::SliderFloat("Bounds damping", &BOUND_DAMPING, -1.5f, 0);
+	ImGui::SliderFloat("Viscosity", &VISC, 10.0f, 500.0f);
+	ImGui::SliderFloat("Particle mass", &MASS, 0.5f, 20.0f);
+	ImGui::SliderFloat("Rest density", &REST_DENS, 10.0f, 500.0f);
+	ImGui::SliderFloat("Gas constant", &GAS_CONST, 500.0f, 6000.0f);
+
+	if (ImGui::Button("Reset parameters to default")) {
+		SetDefaultParameters();
+	}
+
+	ImGui::Checkbox("Accelerate CPU version with uniform grid", &useSpatialGrid);
+	ImGui::Checkbox("Use GPU for computations", &simulateOnGPU);
+
+	ImGui::ColorEdit3("Background color", (float*)&clearColor);
+	ImGui::ColorEdit3("Particles color", (float*)&particlesColor);
+
+	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+	ImGui::End();
+
+
+	// Rendering
+	ImGui::Render();
+	glClearColor(clearColor.x * clearColor.w, clearColor.y * clearColor.w, clearColor.z * clearColor.w, clearColor.w);
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
 int main(void)
@@ -383,10 +438,6 @@ int main(void)
 		ImGui_ImplOpenGL3_Init(glsl_version);
 	}
 
-	// Our state
-	bool fixedTimestep = true;
-
-
 	InitSPH();
 
 	// Do grid initialization everytime to be able to witch acceleration on and off
@@ -436,46 +487,7 @@ int main(void)
 		}
 		
 		Render(window);
-
-		// Start the Dear ImGui frame
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
-
-		static float f = 0.0f;
-		static int counter = 0;
-
-		ImGui::Begin("SPH settings", NULL, ImGuiWindowFlags_AlwaysAutoResize);
-
-		ImGui::Checkbox("FixedTimestep", &fixedTimestep);
-		if (fixedTimestep) {
-			ImGui::InputFloat("Delta Time", &DT);
-		}
-
-		ImGui::SliderFloat("Bounds damping", &BOUND_DAMPING, -1.5f, 0);
-		ImGui::SliderFloat("Viscosity", &VISC, 10.0f, 500.0f);
-		ImGui::SliderFloat("Particle mass", &MASS, 0.5f, 20.0f);
-		ImGui::SliderFloat("Rest density", &REST_DENS, 10.0f, 500.0f);
-		ImGui::SliderFloat("Gas constant", &GAS_CONST, 500.0f, 6000.0f);
-
-		if (ImGui::Button("Reset parameters to default")) {
-			SetDefaultParameters();
-		}
-
-		ImGui::Checkbox("Accelerate CPU version with uniform grid", &accelerateCPU);
-		ImGui::Checkbox("Use GPU for computations", &simlateOnGPU);
-
-		ImGui::ColorEdit3("Background color", (float*)&clearColor); 
-		ImGui::ColorEdit3("Particles color", (float*)&particlesColor); 
-
-		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-		ImGui::End();
-
-
-		// Rendering
-		ImGui::Render();
-		glClearColor(clearColor.x * clearColor.w, clearColor.y * clearColor.w, clearColor.z * clearColor.w, clearColor.w);
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		RenderGUIControlPanel();
 
 		glfwSwapBuffers(window);
 	}
