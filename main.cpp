@@ -3,7 +3,7 @@
 #include "device_launch_parameters.h"
 
 #include "kernel.cuh"
-#include "CudaKernels.cuh"
+#include "CudaFunctions.cuh"
 
 // Include standard headers
 #include <stdio.h>
@@ -37,21 +37,18 @@ using namespace glm;
 #include "MyVec2.h"
 #include "Particle.h"
 #include "ParticleGrid.h"
+#include "Simulation.h"
 
 
 #define PIXEL_FORMAT GL_RGB
 
-bool useSpatialGrid = true;
-bool simulateOnGPU = false;
-bool fixedTimestep = true;
-
-std::vector<Particle> particles;
-ParticleGrid particleGrid(particles);
 
 static void error_callback(int error, const char* description)
 {
 	fputs(description, stderr);
 }
+
+Simulation simulation;
 
 double  t;
 double  t_old = 0.f;
@@ -59,160 +56,6 @@ double  dt;
 
 ImVec4 clearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.0f);
 ImVec4 particlesColor = ImVec4(0.f, 0.f, 0.f, 1.0f);
-
-void InitSPH() {
-	std::cout << "Init dam break with " << DAM_BREAK_PARTICLES << " particles" << std::endl;
-
-	for (float y = EPS; y < VIEW_HEIGHT - EPS * 2.f; y += H) {
-		for (float x = VIEW_WIDTH / 4; x <= VIEW_WIDTH / 2; x += H) {
-			if (particles.size() < DAM_BREAK_PARTICLES) {
-				float jitter = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-				particles.emplace_back(x + jitter, y, particles.size());
-			}
-			else {
-				return;
-			}
-		}
-	}
-}
-
-void GetNeighbourParticlesIndicesTrivial(std::vector<int>& indices) {
-	indices.clear();
-
-	for (int i = 0; i < particles.size(); i++) {
-		indices.push_back(i);
-	}
-}
-
-void Integrate(float deltaTime) {
-	for (Particle& p : particles) {
-		// forward Euler integration
-		if (p.rho > 0.0f) {
-			p.velocity += deltaTime * p.force / p.rho;
-		}
-		p.position += deltaTime * p.velocity;
-
-		// enforce boundary conditions
-		if (p.position.x - EPS < 0.f) {
-			p.velocity.x *= BOUND_DAMPING;
-			p.position.x = EPS;
-		}
-
-		if (p.position.x + EPS > VIEW_WIDTH) {
-			p.velocity.x *= BOUND_DAMPING;
-			p.position.x = VIEW_WIDTH - EPS;
-		}
-
-		if (p.position.y - EPS < 0.f) {
-			p.velocity.y *= BOUND_DAMPING;
-			p.position.y = EPS;
-		};
-
-		if (p.position.y + EPS > VIEW_HEIGHT) {
-			p.velocity.y *= BOUND_DAMPING;
-			p.position.y = VIEW_HEIGHT - EPS;
-		}
-	}
-}
-
-void ComputeDensityPressure() {
-	for (Particle& pi : particles) {
-		pi.rho = 0.f;
-
-		std::vector<int> potentialNeighbours;
-		if (useSpatialGrid) {
-			particleGrid.GetNeighbourParticlesIndices(pi.id, potentialNeighbours);
-
-			/*
-			if (potentialNeighbours.size() > 0) {
-				std::cout << "WE HAVE SOME NEIGHBOURS"<< std::endl;
-			}
-			*/
-		} else {
-			GetNeighbourParticlesIndicesTrivial(potentialNeighbours);
-		}
-
-		for (int index : potentialNeighbours) {
-			Particle pj = particles[index];
-
-			MyVec2 rij = pj.position - pi.position;
-			float r2 = rij.LengthSquared();
-
-			if (r2 < HSQ) {
-				//std::cout << "Collision in Density for id: " << pi.id << " and " << pj.id << std::endl;
-				pi.rho += MASS * POLY6 * pow(HSQ - r2, 3.f);
-			}
-		}
-		pi.p = GAS_CONST * (pi.rho - REST_DENS);
-	}
-}
-
-void ComputeForces() {
-	for (Particle& pi : particles) {
-		MyVec2 fpress(0.f, 0.f);
-		MyVec2 fvisc(0.f, 0.f);
-
-		std::vector<int> potentialNeighbours;
-		if (useSpatialGrid) {
-			particleGrid.GetNeighbourParticlesIndices(pi.id, potentialNeighbours);
-			
-			/*
-			if (potentialNeighbours.size() > 0) {
-				std::cout << "WE HAVE SOME NEIGHBOURS" << std::endl;
-			}
-			*/
-		}
-		else {
-			GetNeighbourParticlesIndicesTrivial(potentialNeighbours);
-		}
-
-		for (int index : potentialNeighbours) {
-			Particle pj = particles[index];
-			if (pi.id == pj.id) {
-				continue;
-			}
-
-			MyVec2 rij = pj.position - pi.position;
-			float r = rij.Length();
-
-			if (r < H) {
-				//std::cout << "Collision in forces for id: " << pi.id << " and " << pj.id << std::endl;
-				// compute pressure force contribution
-				fpress += -rij.Normalized() * MASS * (pi.p + pj.p) / (2.f * pj.rho) * SPIKY_GRAD * pow(H - r, 3.f);
-				// compute viscosity force contribution
-				fvisc += VISC * MASS * (pj.velocity - pi.velocity) / pj.rho * VISC_LAP * (H - r);
-			}
-		}
-		MyVec2 fgrav = G * MASS / pi.rho;
-		pi.force = fpress + fvisc + fgrav;
-	}
-}
-
-void Update(float deltaTime) {
-	if (simulateOnGPU) {
-		if (useSpatialGrid) {
-			particleGrid.Update();
-		}
-
-		// copy grid to GPU
-
-		// copy particles to GPU
-
-		// kernels
-
-		// copy particles back
-
-	} else {
-		if (useSpatialGrid) {
-			particleGrid.Update();
-		}
-
-		ComputeDensityPressure();
-		ComputeForces();
-
-		Integrate(deltaTime);
-	}
-}
 
 void Render(GLFWwindow* window) {
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -226,9 +69,10 @@ void Render(GLFWwindow* window) {
 		particlesColor.z * particlesColor.w,
 		particlesColor.w
 	);
+
 	glBegin(GL_POINTS);
 
-	for (Particle& p : particles) {
+	for (Particle& p : simulation.particles) {
 		glVertex2f(p.position.x, p.position.y);
 	}
 
@@ -238,23 +82,10 @@ void Render(GLFWwindow* window) {
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
-		if (particles.size() >= MAX_PARTICLES) {
-			std::cout << "maximum number of particles reached" << std::endl;
-		}
-		else {
-			unsigned int placed = 0;
-			for (float y = VIEW_HEIGHT / 1.5f - VIEW_HEIGHT / 5.f; y < VIEW_HEIGHT / 1.5f + VIEW_HEIGHT / 5.f; y += H * 0.95f) {
-				for (float x = VIEW_WIDTH / 2.f - VIEW_HEIGHT / 5.f; x <= VIEW_WIDTH / 2.f + VIEW_HEIGHT / 5.f; x += H * 0.95f) {
-					if (placed++ < BLOCK_PARTICLES && particles.size() < MAX_PARTICLES) {
-						particles.push_back(Particle(x, y, particles.size()));
-					}
-				}
-			}
-		}
+		simulation.AddParticleRectangle();
 	}
 	else if (key == GLFW_KEY_R && action == GLFW_PRESS) {
-		particles.clear();
-		InitSPH();
+		simulation.Reset();
 	}
 	else if (key == GLFW_KEY_W && action == GLFW_PRESS) {
 		G.x = 0.0f;
@@ -292,21 +123,7 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	VIEW_WIDTH = 1.5f * WINDOW_WIDTH;
 	VIEW_HEIGHT = 1.5f * WINDOW_HEIGHT;
 
-	// rescale positions of particles
-	for (Particle& p : particles) {
-		p.position.x = (p.position.x * VIEW_WIDTH) / ogWidth;
-		p.position.y = (p.position.y * VIEW_HEIGHT) / ogHeight;
-	}
-
-	// Update uniform grid
-	int dimX = (VIEW_WIDTH + EPS) / (2.f * H);
-	int dimY = (VIEW_HEIGHT + EPS) / (2.f * H);
-
-	particleGrid.Initialize(dimX, dimY, particles);
-	
-	if (useSpatialGrid) {
-		particleGrid.Update();
-	}
+	simulation.windowRescaleRoutine(ogWidth, ogHeight);
 }
 
 void InitGL() {
@@ -314,22 +131,6 @@ void InitGL() {
 	glEnable(GL_POINT_SMOOTH);
 	glPointSize(H / 2.f);
 	glMatrixMode(GL_PROJECTION);
-}
-
-void SetDefaultParameters() {
-	GRAVITY_VAL = 9.81f;
-	G.x = 0.f;
-	G.y = -GRAVITY_VAL;	
-	REST_DENS = 300.f;		
-	GAS_CONST = 2000.f;		
-	H = 16.f;					
-	HSQ = H * H;				
-	MASS = 2.5f;				
-	VISC = 200.f;				
-	DT = 0.0007f;
-
-	EPS = H;
-	BOUND_DAMPING = -0.5f;
 }
 
 void RenderGUIControlPanel() {
@@ -340,8 +141,8 @@ void RenderGUIControlPanel() {
 
 	ImGui::Begin("SPH settings", NULL, ImGuiWindowFlags_AlwaysAutoResize);
 
-	ImGui::Checkbox("FixedTimestep", &fixedTimestep);
-	if (fixedTimestep) {
+	ImGui::Checkbox("FixedTimestep", &simulation.fixedTimestep);
+	if (simulation.fixedTimestep) {
 		ImGui::InputFloat("Delta Time", &DT);
 	}
 
@@ -352,11 +153,11 @@ void RenderGUIControlPanel() {
 	ImGui::SliderFloat("Gas constant", &GAS_CONST, 500.0f, 6000.0f);
 
 	if (ImGui::Button("Reset parameters to default")) {
-		SetDefaultParameters();
+		simulation.SetDefaultParameters();
 	}
 
-	ImGui::Checkbox("Accelerate CPU version with uniform grid", &useSpatialGrid);
-	ImGui::Checkbox("Use GPU for computations", &simulateOnGPU);
+	ImGui::Checkbox("Accelerate CPU version with uniform grid", &simulation.useSpatialGrid);
+	ImGui::Checkbox("Use GPU for computations", &simulation.simulateOnGPU);
 
 	ImGui::ColorEdit3("Background color", (float*)&clearColor);
 	ImGui::ColorEdit3("Particles color", (float*)&particlesColor);
@@ -438,15 +239,11 @@ int main(void)
 		ImGui_ImplOpenGL3_Init(glsl_version);
 	}
 
-	InitSPH();
+	// Initialize SPH simulation
+	simulation.Initialize();
+	simulation.InitSPH();
 
-	// Do grid initialization everytime to be able to witch acceleration on and off
-	int dimX = (VIEW_WIDTH + EPS) / (2.f * H);
-	int dimY = (VIEW_HEIGHT + EPS) / (2.f * H);
-
-	particleGrid.Initialize(dimX, dimY, particles);
-
-
+	// Test CUDA call
 	const int arraySize = 5;
 	const int a[arraySize] = { 1, 2, 3, 4, 5 };
 	const int b[arraySize] = { 10, 20, 30, 40, 50 };
@@ -480,11 +277,7 @@ int main(void)
 		dt = t - t_old;
 		t_old = t;
 		
-		if (fixedTimestep) {
-			Update(DT);
-		} else {
-			Update(dt);
-		}
+		simulation.Update(dt);
 		
 		Render(window);
 		RenderGUIControlPanel();
