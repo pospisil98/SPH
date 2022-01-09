@@ -41,9 +41,9 @@ using namespace glm;
 #define PIXEL_FORMAT GL_RGB
 
 bool accelerateCPU = true;
+bool simlateOnGPU = false;
 
 std::vector<Particle> particles;
-
 ParticleGrid particleGrid(particles);
 
 static void error_callback(int error, const char* description)
@@ -59,11 +59,11 @@ ImVec4 clearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.0f);
 ImVec4 particlesColor = ImVec4(0.f, 0.f, 0.f, 1.0f);
 
 void InitSPH() {
-	std::cout << "Init dam break with " << PARTICLES << " particles" << std::endl;
+	std::cout << "Init dam break with " << DAM_BREAK_PARTICLES << " particles" << std::endl;
 
 	for (float y = EPS; y < VIEW_HEIGHT - EPS * 2.f; y += H) {
 		for (float x = VIEW_WIDTH / 4; x <= VIEW_WIDTH / 2; x += H) {
-			if (particles.size() < PARTICLES) {
+			if (particles.size() < DAM_BREAK_PARTICLES) {
 				float jitter = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
 				particles.emplace_back(x + jitter, y, particles.size());
 			}
@@ -189,6 +189,7 @@ void ComputeForces() {
 void Update(float deltaTime) {
 	if (accelerateCPU) {
 		particleGrid.Update();
+		particleGrid.SetParticleNeighbours();
 	}
 
 	ComputeDensityPressure();
@@ -359,6 +360,9 @@ int main(void)
 	glfwSetKeyCallback(window, key_callback);
 	glfwSetWindowSizeCallback(window, window_size_callback);
 
+	// TODO: unlimited FPS / cap to screen refresh rate
+	//glfwSwapInterval(0);
+
 	InitGL();
 
 
@@ -459,6 +463,7 @@ int main(void)
 		}
 
 		ImGui::Checkbox("Accelerate CPU version with uniform grid", &accelerateCPU);
+		ImGui::Checkbox("Use GPU for computations", &simlateOnGPU);
 
 		ImGui::ColorEdit3("Background color", (float*)&clearColor); 
 		ImGui::ColorEdit3("Particles color", (float*)&particlesColor); 

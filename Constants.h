@@ -10,7 +10,7 @@ static int WINDOW_HEIGHT = 720;
 static double VIEW_WIDTH = 1.5f * WINDOW_WIDTH;
 static double VIEW_HEIGHT = 1.5f * WINDOW_HEIGHT;
 
-static const int PARTICLES = 100;
+static const int DAM_BREAK_PARTICLES = 100;
 static const int MAX_PARTICLES = 5000;
 static const int BLOCK_PARTICLES = 400;
 
@@ -33,5 +33,4 @@ static float BOUND_DAMPING = -0.5f;
 // adapted to 2D per "SPH Based Shallow Water Simulation" by Solenthaler et al.
 static float POLY6 = 4.f / (M_PI * pow(H, 8.f));
 static float SPIKY_GRAD = -10.f / (M_PI * pow(H, 5.f));
-static 
-float VISC_LAP = 40.f / (M_PI * pow(H, 5.f));
+static float VISC_LAP = 40.f / (M_PI * pow(H, 5.f));

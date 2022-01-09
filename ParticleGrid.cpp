@@ -18,9 +18,14 @@ void ParticleGrid::Add(int particleID) {
 
 	//std::cout << "inserting " << particleID << " in cell " << index << std::endl;
 
-	particles[particleID].gridCellID = index;
+	if (grid[index] == -1) {
+		particles[particleID].nextParticle = -1;
+	} else {
+		particles[particleID].nextParticle = grid[index];	
+	}
 
-	grid[index].insert(particleID);
+	particles[particleID].gridCellID = index;
+	grid[index] = particleID;
 }
 
 void ParticleGrid::Update() {
@@ -32,8 +37,11 @@ void ParticleGrid::Update() {
 }
 
 void ParticleGrid::Clear() {
-	for (int i = 0; i < dimX * dimY; i++) {
-		grid[i].clear();
+	grid.clear();
+	grid.resize(dimX * dimY);
+
+	for (int i = 0; i < grid.size(); i++) {
+		grid[i] = -1;
 	}
 }
 
@@ -57,10 +65,13 @@ void ParticleGrid::GetNeighbourParticlesIndices(int particleIndex, std::vector<i
 	indices.clear();
 
 	for (int neighbourIndex : neighbourCells) {
-		for (int particleID : grid[neighbourIndex]) {
-			indices.push_back(particleID);
+		int currentParticle = grid[neighbourIndex];
+
+		while (currentParticle != -1) {
+			indices.push_back(currentParticle);
+			currentParticle = particles[currentParticle].nextParticle;
 		}
-	}
+	}	
 }
 
 std::vector<int> ParticleGrid::GetNeighbourCellIndices(int index) {
@@ -79,4 +90,10 @@ std::vector<int> ParticleGrid::GetNeighbourCellIndices(int index) {
 	}
 
 	return neighbours;
+}
+
+void ParticleGrid::SetParticleNeighbours() {
+	for (int i = 0; i < particles.size(); i++) {
+
+	}
 }

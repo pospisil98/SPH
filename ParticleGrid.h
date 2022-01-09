@@ -5,7 +5,7 @@
 #include "Particle.h"
 
 struct ParticleGrid {
-	std::vector<std::unordered_set<int>> grid;
+	std::vector<int> grid;
 
 	std::vector<Particle>& particles;
 
@@ -25,7 +25,7 @@ struct ParticleGrid {
 		dimX = _dimX;
 		dimY = _dimY;
 
-		grid.resize(dimX * dimY);
+		Clear();
 	}
 
 	void Initialize(int _dimX, int _dimY, std::vector<Particle>& _particles);
@@ -35,6 +35,8 @@ struct ParticleGrid {
 	void Update();
 
 	void Clear();
+
+	void SetParticleNeighbours();
 
 	int GetGridCellIndexFromParticleIndex(int particleID);
 
