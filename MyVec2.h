@@ -7,6 +7,7 @@ struct MyVec2 {
 	float x;
 	float y;
 
+	MyVec2() : x(0.0f), y(0.0f) { }
 	MyVec2(float _x, float _y) : x(_x), y(_y) { }
 
 	inline MyVec2& operator = (const MyVec2& v) { x = v.x; y = v.y; return *this; }

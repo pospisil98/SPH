@@ -32,180 +32,19 @@ using namespace glm;
 #include <iostream>
 #include <unordered_set>
 
+#include "Constants.h"
 #include "MyVec2.h"
+#include "Particle.h"
+#include "ParticleGrid.h"
 
 
 #define PIXEL_FORMAT GL_RGB
 
-int WINDOW_WIDTH = 1280;
-int WINDOW_HEIGHT = 720;
-double VIEW_WIDTH = 1.5f * WINDOW_WIDTH;
-double VIEW_HEIGHT = 1.5f * WINDOW_HEIGHT;
-
-const int PARTICLES = 100;
-const int MAX_PARTICLES = 5000;
-const int BLOCK_PARTICLES = 400;
-
 bool accelerateCPU = true;
-
-// "Particle-Based Fluid Simulation for Interactive Applications" by Müller et al.
-// solver parameters
-float GRAVITY_VAL = 9.81f;
-MyVec2 G(0.f, -GRAVITY_VAL);	// external (gravitational) forces
-float REST_DENS = 300.f;		// rest density
-float GAS_CONST = 2000.f;		// const for equation of state
-float H = 16.f;					// kernel radius
-float HSQ = H * H;				// radius^2 for optimization
-float MASS = 2.5f;				// assume all particles have the same mass
-float VISC = 200.f;				// viscosity constant
-float DT = 0.0007f;				// integration timestep
-
-float EPS = H;
-float BOUND_DAMPING = -0.5f;
-
-struct Particle {
-	MyVec2 position;
-	MyVec2 velocity;
-	MyVec2 force;
-
-	float rho;
-	float p;
-
-	int id;
-	int gridCellID;
-
-	Particle(float _x, float _y, int _id) :
-		position(_x, _y),
-		velocity(0.f, 0.f),
-		force(0.f, 0.f),
-		rho(0),
-		p(0.0f),
-		id(_id)
-	{
-		gridCellID = 0;
-	}
-};
 
 std::vector<Particle> particles;
 
-struct ParticleGrid {
-	std::vector<std::unordered_set<int>> grid;
-
-	int dimX;
-	int dimY;
-
-	ParticleGrid() {
-		dimX = -1;
-		dimY = -1;
-	}
-
-	ParticleGrid(int _dimX, int _dimY) :
-		dimX(_dimX),
-		dimY(_dimY)
-	{
-		grid.resize(dimX * dimY);
-	}
-
-	void Add(int particleID) {
-		/*
-		if (particleID == 0) {
-			std::cout << "BREAK" << std::endl;
-		}
-		*/
-		
-		int index = GetGridCellIndexFromParticleIndex(particleID);
-
-		//std::cout << "inserting " << particleID << " in cell " << index << std::endl;
-
-		particles[particleID].gridCellID = index;
-
-		grid[index].insert(particleID);
-	}
-
-	void Update() {
-		Clear();
-
-		for (Particle& p : particles) {
-			Add(p.id);
-		}
-	}
-
-	void Clear() {
-		for (int i = 0; i < dimX * dimY; i++) {
-			grid[i].clear();
-		}
-	}
-
-	int GetGridCellIndexFromParticleIndex(int particleID) {
-		int x = particles[particleID].position.x / (2.f * H);
-		int y = particles[particleID].position.y / (2.f * H);
-
-		int index = Index2Dto1D(x, y);
-
-		if (index > grid.size()) {
-			std::cout << "OJOJ" << std::endl;
-		}
-
-		return Index2Dto1D(x, y);
-	}
-
-	void GetNeighbourParticlesIndices(int particleIndex, std::vector<int>& indices) {
-		int gridIndex = particles[particleIndex].gridCellID;
-		std::vector<int> neighbourCells = GetNeighbourCellIndices(gridIndex);
-
-		/*
-		for (int i = 0; i < neighbourCells.size(); i++) {
-			std::pair<int, int> p = Index1Dto2D(neighbourCells[i]);
-			std::cout << p.first << ", " << p.second << std::endl;
-		}
-		*/
-
-		indices.clear();
-
-		for (int neighbourIndex : neighbourCells) {
-			for (int particleID : grid[neighbourIndex]) {
-				indices.push_back(particleID);
-			}
-		}
-	}
-
-	std::vector<int> GetNeighbourCellIndices(int index) {
-		std::vector<int> neighbours;
-		std::pair<int, int> index2D = Index1Dto2D(index);
-
-		for (int x = -1; x <= 1; x++) {
-			for (int y = -1; y <= 1; y++) {
-				int newX = index2D.first + x;
-				int newY = index2D.second + y;
-
-				if (newX >= 0 && newX < dimX && newY >= 0 && newY < dimY) {
-					neighbours.push_back(Index2Dto1D(newX, newY));
-				}
-			}
-		}
-
-		return neighbours;
-	}
-
-	int Index2Dto1D(int x, int y) {
-		return x + y * dimX;
-	}
-
-	std::pair<int, int> Index1Dto2D(int index) {
-		int x = index % dimX;
-		int y = index / dimX;
-
-		return std::make_pair(x, y);
-	}
-};
-
-ParticleGrid particleGrid;
-
-// smoothing kernels defined in Müller and their gradients
-// adapted to 2D per "SPH Based Shallow Water Simulation" by Solenthaler et al.
-const static float POLY6 = 4.f / (M_PI * pow(H, 8.f));
-const static float SPIKY_GRAD = -10.f / (M_PI * pow(H, 5.f));
-const static float VISC_LAP = 40.f / (M_PI * pow(H, 5.f));
+ParticleGrid particleGrid(particles);
 
 static void error_callback(int error, const char* description)
 {
@@ -445,7 +284,9 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	// Update uniform grid
 	int dimX = (VIEW_WIDTH + EPS) / (2.f * H);
 	int dimY = (VIEW_HEIGHT + EPS) / (2.f * H);
-	particleGrid = ParticleGrid(dimX, dimY);
+
+	particleGrid.Initialize(dimX, dimY, particles);
+	
 	if (accelerateCPU) {
 		particleGrid.Update();
 	}
@@ -547,7 +388,8 @@ int main(void)
 	// Do grid initialization everytime to be able to witch acceleration on and off
 	int dimX = (VIEW_WIDTH + EPS) / (2.f * H);
 	int dimY = (VIEW_HEIGHT + EPS) / (2.f * H);
-	particleGrid = ParticleGrid(dimX, dimY);
+
+	particleGrid.Initialize(dimX, dimY, particles);
 
 
 	const int arraySize = 5;
