@@ -61,7 +61,7 @@ void Simulation::InitSPH() {
 
 void Simulation::AddParticleRectangle() {
 	if (particles.size() >= MAX_PARTICLES) {
-		std::cout << "maximum number of particles reached" << std::endl;
+		std::cout << "maximum number of particles reached " << MAX_PARTICLES << std::endl;
 	}
 	else {
 		unsigned int placed = 0;

@@ -146,23 +146,30 @@ void RenderGUIControlPanel() {
 		ImGui::InputFloat("Delta Time", &DT);
 	}
 
-	ImGui::SliderFloat("Bounds damping", &BOUND_DAMPING, -1.5f, 0);
-	ImGui::SliderFloat("Viscosity", &VISC, 10.0f, 500.0f);
-	ImGui::SliderFloat("Particle mass", &MASS, 0.5f, 20.0f);
-	ImGui::SliderFloat("Rest density", &REST_DENS, 10.0f, 500.0f);
-	ImGui::SliderFloat("Gas constant", &GAS_CONST, 500.0f, 6000.0f);
+	ImGui::Spacing();
+	ImGui::SliderInt("Maximum particles", &simulation.MAX_PARTICLES, 0, 50000);
+	ImGui::SliderFloat("Bounds damping", &simulation.BOUND_DAMPING, -1.5f, 0);
+	ImGui::SliderFloat("Viscosity", &simulation.VISC, 10.0f, 500.0f);
+	ImGui::SliderFloat("Particle mass", &simulation.MASS, 0.5f, 20.0f);
+	ImGui::SliderFloat("Rest density", &simulation.REST_DENS, 10.0f, 500.0f);
+	ImGui::SliderFloat("Gas constant", &simulation.GAS_CONST, 500.0f, 6000.0f);
 
+	ImGui::Spacing();
 	if (ImGui::Button("Reset parameters to default")) {
 		simulation.SetDefaultParameters();
 	}
 
+	ImGui::Spacing();
 	ImGui::Checkbox("Accelerate CPU version with uniform grid", &simulation.useSpatialGrid);
 	ImGui::Checkbox("Use GPU for computations", &simulation.simulateOnGPU);
 
+	ImGui::Spacing();
 	ImGui::ColorEdit3("Background color", (float*)&clearColor);
 	ImGui::ColorEdit3("Particles color", (float*)&particlesColor);
 
+	ImGui::Spacing();
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+	ImGui::Text("Particle count: %d", simulation.particles.size());
 	ImGui::End();
 
 

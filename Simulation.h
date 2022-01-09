@@ -17,6 +17,13 @@ struct Simulation {
 	bool simulateOnGPU = false;
 	bool fixedTimestep = true;
 
+	int MAX_PARTICLES = 5000;
+	float REST_DENS = 300.f;		// rest density
+	float GAS_CONST = 2000.f;		// const for equation of state
+	float MASS = 2.5f;				// assume all particles have the same mass
+	float VISC = 200.f;				// viscosity constant
+	float BOUND_DAMPING = -0.5f;
+
 	Simulation() : particleGrid(-1, -1, particles) {
 		Initialize();
 	}
