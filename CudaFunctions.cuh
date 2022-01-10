@@ -6,7 +6,6 @@
 
 #include "Particle.h"
 #include "ParticleGrid.h"
-#include "Simulation.h"
 
 // funkce pro osetreni chyb
 static void HandleError(cudaError_t error, const char* file, int line) {
@@ -19,20 +18,25 @@ static void HandleError(cudaError_t error, const char* file, int line) {
 }
 #define CHECK_ERROR( error ) ( HandleError( error, __FILE__, __LINE__ ) )
 
+struct Simulation;
 
 struct MyCudaWrapper {
-	Simulation* simulation;
+	MyCudaWrapper() { }
 
-	MyCudaWrapper() {
-		simulation = nullptr;
-	}
+	void Init(Simulation& simulation);
 
-	void init(Simulation& simulation);
+	void Update(Simulation& simulation, float timeStep);
+
+	void CopyParticlesHostToDevice(Simulation& simulation);
+
+	void CopyParticlesDeviceToHost(Simulation& simulation);
+
+	void CopyGridHostToDevice(Simulation& simulation);
 
 };
 
-__global__ void densityKernel(int particleCount, Particle* particles, ParticleGrid grid);
+__global__ void densityPressureKernel(int particleCount, Particle* particles, ParticleGrid grid, float MASS, float GAS_CONST, float REST_DENS);
 
-__global__ void velocityKernel(int particleCount, Particle* particles, ParticleGrid grid);
+__global__ void forceKernel(int particleCount, Particle* particles, ParticleGrid grid, float MASS, float VISC, MyVec2 G);
 
-__global__ void integrateKernel(int particleCount, Particle* particles, float timeStep);
+__global__ void integrateKernel(int particleCount, Particle* particles, float timeStep, float BOUND_DAMPING, float VIEW_WIDTH, float VIEW_HEIGHT);

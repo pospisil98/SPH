@@ -11,11 +11,15 @@
 #include "Particle.h"
 #include "ParticleGrid.h"
 
+#include "CudaFunctions.cuh"
+
 struct Simulation {
 	std::vector<Particle> particles;
 	Particle* particlesDevice;
 	
 	ParticleGrid particleGrid;
+
+	MyCudaWrapper cudaWrapper;
 	
 	bool useSpatialGrid = true;
 	bool simulateOnGPU = false;
@@ -32,6 +36,7 @@ struct Simulation {
 	int DAM_BREAK_PARTICLES = 100;
 	int BLOCK_PARTICLES = 400;
 
+	MyVec2 G = MyVec2(0.0f, -GRAVITY_VAL);
 	float REST_DENS = 300.f;		// rest density
 	float GAS_CONST = 2000.f;		// const for equation of state
 	float MASS = 2.5f;				// assume all particles have the same mass
@@ -41,7 +46,7 @@ struct Simulation {
 	Simulation() : particleGrid(-1, -1, particles, particleCount) {
 		particles.resize(MAX_PARTICLES);
 
-		Initialize();	
+		//Initialize();	
 	}
 
 	~Simulation() {

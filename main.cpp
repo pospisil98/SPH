@@ -48,7 +48,6 @@ static void error_callback(int error, const char* description)
 }
 
 Simulation simulation;
-MyCudaWrapper cudaWrapper;
 
 double  t;
 double  t_old = 0.f;
@@ -88,20 +87,20 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		simulation.Reset();
 	}
 	else if (key == GLFW_KEY_W && action == GLFW_PRESS) {
-		G.x = 0.0f;
-		G.y = GRAVITY_VAL;
+		simulation.G.x = 0.0f;
+		simulation.G.y = GRAVITY_VAL;
 	}
 	else if (key == GLFW_KEY_S && action == GLFW_PRESS) {
-		G.x = 0.0f;
-		G.y = -GRAVITY_VAL;
+		simulation.G.x = 0.0f;
+		simulation.G.y = -GRAVITY_VAL;
 	}
 	else if (key == GLFW_KEY_A && action == GLFW_PRESS) {
-		G.x = -GRAVITY_VAL;
-		G.y = 0.0f;
+		simulation.G.x = -GRAVITY_VAL;
+		simulation.G.y = 0.0f;
 	}
 	else if (key == GLFW_KEY_D && action == GLFW_PRESS) {
-		G.x = GRAVITY_VAL;
-		G.y = 0.0f;
+		simulation.G.x = GRAVITY_VAL;
+		simulation.G.y = 0.0f;
 	} else if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, GL_TRUE);
 	}
@@ -158,7 +157,7 @@ void RenderGUIControlPanel() {
 
 	ImGui::Checkbox("FixedTimestep", &simulation.fixedTimestep);
 	if (simulation.fixedTimestep) {
-		ImGui::InputFloat("Delta Time", &DT);
+		//ImGui::InputFloat("Delta Time", &DT);
 	}
 
 	ImGui::Spacing();
@@ -261,10 +260,8 @@ int main(void)
 		ImGui_ImplOpenGL3_Init(glsl_version);
 	}
 
-	//cudaWrapper.init(simulation);
-
 	// Initialize SPH simulation
-	simulation.Initialize();
+	//simulation.Initialize();
 	simulation.InitSPH();
 
 	// Test ability to map host memory (from some page-lock tutorial)
@@ -275,6 +272,7 @@ int main(void)
 		exit(EXIT_FAILURE);
 	}
 
+	/*
 	// Test CUDA call
 	const int arraySize = 5;
 	const int a[arraySize] = { 1, 2, 3, 4, 5 };
@@ -290,15 +288,7 @@ int main(void)
 
 	printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
 		c[0], c[1], c[2], c[3], c[4]);
-
-	// cudaDeviceReset must be called before exiting in order for profiling and
-	// tracing tools such as Nsight and Visual Profiler to show complete traces.
-	cudaStatus = cudaDeviceReset();
-	if (cudaStatus != cudaSuccess) {
-		fprintf(stderr, "cudaDeviceReset failed!");
-		return 1;
-	}
-
+	*/
 
 	// Loop until the user closes the window 
 	while (!glfwWindowShouldClose(window))

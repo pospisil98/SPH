@@ -4,24 +4,13 @@
 void Simulation::Update(float timeStep) {
 	timeStep = fixedTimestep ? DT : timeStep;
 
-	if (simulateOnGPU) {
-		if (useSpatialGrid) {
-			particleGrid.Update();
-		}
-
-		// copy grid to GPU
-
-		// copy particles to GPU
-
-		// kernels
-
-		// copy particles back
-
+	if (useSpatialGrid) {
+		particleGrid.Update();
 	}
-	else {
-		if (useSpatialGrid) {
-			particleGrid.Update();
-		}
+
+	if (simulateOnGPU && useSpatialGrid) {
+		cudaWrapper.Update(*this, timeStep);
+	} else {
 
 		ComputeDensityPressure();
 		ComputeForces();
@@ -36,6 +25,8 @@ void Simulation::Initialize() {
 	int dimY = (VIEW_HEIGHT + EPS) / (2.f * H);
 
 	particleGrid.Initialize(dimX, dimY);
+
+	cudaWrapper.Init(*this);
 }
 
 void Simulation::Reset()
@@ -79,18 +70,11 @@ void Simulation::AddParticleRectangle() {
 }
 
 void Simulation::SetDefaultParameters() {
-	GRAVITY_VAL = 9.81f;
-	G.x = 0.f;
-	G.y = -GRAVITY_VAL;
 	REST_DENS = 300.f;
 	GAS_CONST = 2000.f;
-	H = 16.f;
-	HSQ = H * H;
 	MASS = 2.5f;
 	VISC = 200.f;
-	DT = 0.0007f;
 
-	EPS = H;
 	BOUND_DAMPING = -0.5f;
 }
 

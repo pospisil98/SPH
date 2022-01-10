@@ -50,7 +50,12 @@ struct ParticleGrid {
 
 	std::vector<int> GetNeighbourCellIndices(int index);
 
-	inline int Index2Dto1D(int x, int y) { 
+	inline __host__ __device__ void Index1Dto2D(int index, int& x, int& y) {
+		x = index % dimX;
+		y = index / dimX;
+	}
+
+	inline  __host__ __device__ int Index2Dto1D(int x, int y) {
 		return x + y * dimX;
 	}
 
