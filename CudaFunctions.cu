@@ -31,27 +31,37 @@ void MyCudaWrapper::Init(Simulation& simulation) {
 }
 
 void MyCudaWrapper::Update(Simulation& simulation, float timeStep) {
-	CHECK_ERROR(cudaThreadSynchronize());
 	// copy spatial grid to device
 	CopyGridHostToDevice(simulation);
 
+	// copy particles to device
+	CopyParticlesHostToDevice(simulation);
+
+	CHECK_ERROR(cudaDeviceSynchronize());
+
 	// call kernels
-	unsigned int blockCount = std::ceil(simulation.particleCount / 256);
+	unsigned int blockCount = std::ceil((float)simulation.particleCount / 256);
+
 	densityPressureKernel << <blockCount, 256 >> > (simulation.particleCount, simulation.particlesDevice, simulation.particleGrid, simulation.MASS, simulation.GAS_CONST, simulation.REST_DENS);
+	CHECK_ERROR(cudaDeviceSynchronize());
 	forceKernel << <blockCount, 256 >> > (simulation.particleCount, simulation.particlesDevice, simulation.particleGrid, simulation.MASS, simulation.VISC, simulation.G);
+	CHECK_ERROR(cudaDeviceSynchronize());
 	integrateKernel << <blockCount, 256 >> > (simulation.particleCount, simulation.particlesDevice, timeStep, simulation.BOUND_DAMPING, simulation.VIEW_WIDTH, simulation.VIEW_HEIGHT);
 
+	CHECK_ERROR(cudaDeviceSynchronize());
 
 	// copy particles back to host
 	CopyParticlesDeviceToHost(simulation);
+
+	CHECK_ERROR(cudaDeviceSynchronize());
 }
 
 void MyCudaWrapper::CopyParticlesHostToDevice(Simulation& simulation) {
-	CHECK_ERROR(cudaMemcpy(simulation.particlesDevice, simulation.particles.data(), simulation.particleCount * sizeof(Particle), cudaMemcpyHostToDevice));
+	CHECK_ERROR(cudaMemcpy(simulation.particlesDevice, simulation.particles, simulation.particleCount * sizeof(Particle), cudaMemcpyHostToDevice));
 }
 
 void MyCudaWrapper::CopyParticlesDeviceToHost(Simulation& simulation) {
-	CHECK_ERROR(cudaMemcpy(simulation.particles.data(), simulation.particlesDevice, simulation.particleCount * sizeof(Particle), cudaMemcpyDeviceToHost));
+	CHECK_ERROR(cudaMemcpy(simulation.particles, simulation.particlesDevice, simulation.particleCount * sizeof(Particle), cudaMemcpyDeviceToHost));
 }
 
 void MyCudaWrapper::CopyGridHostToDevice(Simulation& simulation) {
@@ -61,7 +71,7 @@ void MyCudaWrapper::CopyGridHostToDevice(Simulation& simulation) {
 __global__ void densityPressureKernel(int particleCount, Particle* particles, ParticleGrid grid, float MASS, float GAS_CONST, float REST_DENS)
 {
 	int particleID = blockDim.x * blockIdx.x + threadIdx.x;
-	if (particleID > particleCount) {
+	if (particleID >= particleCount) {
 		return;
 	}
 
@@ -70,11 +80,11 @@ __global__ void densityPressureKernel(int particleCount, Particle* particles, Pa
 
 	int posX;
 	int posY;
-	grid.Index1Dto2D(pi.id, posX, posY);
+	grid.Index1Dto2D(pi.gridCellID, posX, posY);
 
 	// Go over neighbour cells
-	for (int x = posX - 1; x < posX + 1; x++) {
-		for (int y = posY - 1; y < posY + 1; y++) {
+	for (int x = posX - 1; x <= posX + 1; x++) {
+		for (int y = posY - 1; y <= posY + 1; y++) {
 			// Check grid boundaries
 			if (x < 0 || x >= grid.dimX || y < 0 || y >= grid.dimY) {
 				continue;
@@ -86,59 +96,26 @@ __global__ void densityPressureKernel(int particleCount, Particle* particles, Pa
 			// While there are some neighbours in that grid cell
 			while (currentIndex != -1) {
 				Particle& pj = particles[currentIndex];
-				
-				// TODO: check wasnt there
-				if (pi.id != pj.id) {
-					MyVec2 rij = pj.position - pi.position;
-					float r2 = rij.LengthSquared();
 
-					if (r2 < HSQ) {
-						pi.rho += MASS * POLY6 * pow(HSQ - r2, 3.f);
-					}
+				MyVec2 rij = pj.position - pi.position;
+				float r2 = rij.LengthSquared();
+
+				if (r2 < HSQ) {
+					pi.rho += MASS * POLY6 * pow(HSQ - r2, 3.f);
 				}
 
 				currentIndex = pj.nextParticle;
 			}
 		}
 	}
+
 	pi.p = GAS_CONST * (pi.rho - REST_DENS);
 }
 
 __global__ void forceKernel(int particleCount, Particle* particles, ParticleGrid grid, float MASS, float VISC, MyVec2 G)
 {
-	/*
-		for (int i = 0; i < particleCount; i++) {
-		Particle& pi = particles[i];
-
-		MyVec2 fpress(0.f, 0.f);
-		MyVec2 fvisc(0.f, 0.f);
-
-		std::vector<int> potentialNeighbours;
-		GetNeighbourParticlesIndices(pi.id, potentialNeighbours);
-
-		for (int index : potentialNeighbours) {
-			Particle pj = particles[index];
-			if (pi.id == pj.id) {
-				continue;
-			}
-
-			MyVec2 rij = pj.position - pi.position;
-			float r = rij.Length();
-
-			if (r < H) {
-				//std::cout << "Collision in forces for id: " << pi.id << " and " << pj.id << std::endl;
-				// compute pressure force contribution
-				fpress += -rij.Normalized() * MASS * (pi.p + pj.p) / (2.f * pj.rho) * SPIKY_GRAD * pow(H - r, 3.f);
-				// compute viscosity force contribution
-				fvisc += VISC * MASS * (pj.velocity - pi.velocity) / pj.rho * VISC_LAP * (H - r);
-			}
-		}
-		MyVec2 fgrav = G * MASS / pi.rho;
-		pi.force = fpress + fvisc + fgrav;
-	}
-	*/
 	int particleID = blockDim.x * blockIdx.x + threadIdx.x;
-	if (particleID > particleCount) {
+	if (particleID >= particleCount) {
 		return;
 	}
 
@@ -149,11 +126,11 @@ __global__ void forceKernel(int particleCount, Particle* particles, ParticleGrid
 
 	int posX;
 	int posY;
-	grid.Index1Dto2D(pi.id, posX, posY);
+	grid.Index1Dto2D(pi.gridCellID, posX, posY);
 
 	// Go over neighbour cells
-	for (int x = posX - 1; x < posX + 1; x++) {
-		for (int y = posY - 1; y < posY + 1; y++) {
+	for (int x = posX - 1; x <= posX + 1; x++) {
+		for (int y = posY - 1; y <= posY + 1; y++) {
 			// Check grid boundaries
 			if (x < 0 || x >= grid.dimX || y < 0 || y >= grid.dimY) {
 				continue;
@@ -166,19 +143,20 @@ __global__ void forceKernel(int particleCount, Particle* particles, ParticleGrid
 			while (currentIndex != -1) {
 				Particle& pj = particles[currentIndex];
 
-				if (pi.id == pj.id) {
-					continue;
+				if (pi.id != pj.id) {
+					MyVec2 rij = pj.position - pi.position;
+					float r = rij.Length();
+
+					if (r < H) {
+						// compute pressure force contribution
+						fpress += -rij.Normalized() * MASS * (pi.p + pj.p) / (2.f * pj.rho) * SPIKY_GRAD * pow(H - r, 3.f);
+
+						// compute viscosity force contribution
+						fvisc += VISC * MASS * (pj.velocity - pi.velocity) / pj.rho * VISC_LAP * (H - r);
+					}
 				}
 
-				MyVec2 rij = pj.position - pi.position;
-				float r = rij.Length();
-
-				if (r < H) {
-					// compute pressure force contribution
-					fpress += -rij.Normalized() * MASS * (pi.p + pj.p) / (2.f * pj.rho) * SPIKY_GRAD * pow(H - r, 3.f);
-					// compute viscosity force contribution
-					fvisc += VISC * MASS * (pj.velocity - pi.velocity) / pj.rho * VISC_LAP * (H - r);
-				}
+				currentIndex = pj.nextParticle;
 			}
 		}
 	}
@@ -190,7 +168,7 @@ __global__ void forceKernel(int particleCount, Particle* particles, ParticleGrid
 __global__ void integrateKernel(int particleCount, Particle* particles, float timeStep, float BOUND_DAMPING, float VIEW_WIDTH, float VIEW_HEIGHT)
 {
 	int particleID = blockDim.x * blockIdx.x + threadIdx.x;
-	if (particleID > particleCount) {
+	if (particleID >= particleCount) {
 		return;
 	}
 
@@ -200,6 +178,7 @@ __global__ void integrateKernel(int particleCount, Particle* particles, float ti
 	if (p.rho > 0.0f) {
 		p.velocity += timeStep * p.force / p.rho;
 	}
+
 	p.position += timeStep * p.velocity;
 
 	// enforce boundary conditions

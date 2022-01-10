@@ -24,6 +24,7 @@ void Simulation::Initialize() {
 	int dimX = (VIEW_WIDTH + EPS) / (2.f * H);
 	int dimY = (VIEW_HEIGHT + EPS) / (2.f * H);
 
+	particleGrid.particles = particles;
 	particleGrid.Initialize(dimX, dimY);
 
 	cudaWrapper.Init(*this);
@@ -31,7 +32,7 @@ void Simulation::Initialize() {
 
 void Simulation::Reset()
 {
-	particles.clear();
+	particles = new Particle[MAX_PARTICLES];
 	InitSPH();
 }
 

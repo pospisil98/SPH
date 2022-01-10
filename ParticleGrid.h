@@ -8,13 +8,13 @@ struct ParticleGrid {
 	std::vector<int> grid;
 	int* gridDevice;
 
-	std::vector<Particle>& particles;
+	Particle* particles;
 	int& particleCount;
 
 	int dimX;
 	int dimY;
 
-	ParticleGrid(std::vector<Particle>& _particles, int& _particleCount) :
+	ParticleGrid(Particle* _particles, int& _particleCount) :
 		particles(_particles),
 		particleCount(_particleCount)
 	{
@@ -24,7 +24,7 @@ struct ParticleGrid {
 		gridDevice = nullptr;
 	}
 
-	ParticleGrid(int _dimX, int _dimY, std::vector<Particle>& _particles, int& _particleCount) :
+	ParticleGrid(int _dimX, int _dimY, Particle* _particles, int& _particleCount) :
 		particles(_particles),
 		particleCount(_particleCount)
 	{

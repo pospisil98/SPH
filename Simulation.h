@@ -14,7 +14,7 @@
 #include "CudaFunctions.cuh"
 
 struct Simulation {
-	std::vector<Particle> particles;
+	Particle* particles;
 	Particle* particlesDevice;
 	
 	ParticleGrid particleGrid;
@@ -22,7 +22,7 @@ struct Simulation {
 	MyCudaWrapper cudaWrapper;
 	
 	bool useSpatialGrid = true;
-	bool simulateOnGPU = false;
+	bool simulateOnGPU = true;
 	bool fixedTimestep = true;
 
 	int WINDOW_WIDTH = 1280;
@@ -44,13 +44,12 @@ struct Simulation {
 	float BOUND_DAMPING = -0.5f;
 
 	Simulation() : particleGrid(-1, -1, particles, particleCount) {
-		particles.resize(MAX_PARTICLES);
+		particles = new Particle[MAX_PARTICLES];
 
-		//Initialize();	
+		Initialize();	
 	}
 
 	~Simulation() {
-		cudaHostUnregister(particles.data());
 	}
 
 	void Initialize();
