@@ -3,11 +3,9 @@
 #include "ParticleGrid.h"
 #include "Constants.h"
 
-void ParticleGrid::Initialize(int _dimX, int _dimY, std::vector<Particle>& _particles) {
+void ParticleGrid::Initialize(int _dimX, int _dimY) {
 	dimX = _dimX;
 	dimY = _dimY;
-
-	particles = _particles;
 
 	grid.clear();
 	grid.resize(dimX * dimY);
@@ -21,7 +19,7 @@ void ParticleGrid::Add(int particleID) {
 	if (grid[index] == -1) {
 		particles[particleID].nextParticle = -1;
 	} else {
-		particles[particleID].nextParticle = grid[index];	
+		particles[particleID].nextParticle = grid[index];
 	}
 
 	particles[particleID].gridCellID = index;
@@ -31,8 +29,8 @@ void ParticleGrid::Add(int particleID) {
 void ParticleGrid::Update() {
 	Clear();
 
-	for (Particle& p : particles) {
-		Add(p.id);
+	for (int i = 0; i < particleCount; i++) {
+		Add(particles[i].id);
 	}
 }
 

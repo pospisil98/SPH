@@ -1,5 +1,8 @@
 #pragma once
 
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
+
 #include <vector>
 #include <iostream>
 
@@ -10,7 +13,8 @@
 
 struct Simulation {
 	std::vector<Particle> particles;
-
+	Particle* particlesDevice;
+	
 	ParticleGrid particleGrid;
 	
 	bool useSpatialGrid = true;
@@ -22,7 +26,9 @@ struct Simulation {
 	double VIEW_WIDTH = 1.5f * WINDOW_WIDTH;
 	double VIEW_HEIGHT = 1.5f * WINDOW_HEIGHT;
 
-	int MAX_PARTICLES = 5000;
+	int particleCount = 0;
+
+	int MAX_PARTICLES = 15000;
 	int DAM_BREAK_PARTICLES = 100;
 	int BLOCK_PARTICLES = 400;
 
@@ -32,8 +38,14 @@ struct Simulation {
 	float VISC = 200.f;				// viscosity constant
 	float BOUND_DAMPING = -0.5f;
 
-	Simulation() : particleGrid(-1, -1, particles) {
-		Initialize();
+	Simulation() : particleGrid(-1, -1, particles, particleCount) {
+		particles.resize(MAX_PARTICLES);
+
+		Initialize();	
+	}
+
+	~Simulation() {
+		cudaHostUnregister(particles.data());
 	}
 
 	void Initialize();

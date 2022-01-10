@@ -1,5 +1,6 @@
 #include "Simulation.h"
 
+
 void Simulation::Update(float timeStep) {
 	timeStep = fixedTimestep ? DT : timeStep;
 
@@ -34,7 +35,7 @@ void Simulation::Initialize() {
 	int dimX = (VIEW_WIDTH + EPS) / (2.f * H);
 	int dimY = (VIEW_HEIGHT + EPS) / (2.f * H);
 
-	particleGrid.Initialize(dimX, dimY, particles);
+	particleGrid.Initialize(dimX, dimY);
 }
 
 void Simulation::Reset()
@@ -48,9 +49,10 @@ void Simulation::InitSPH() {
 
 	for (float y = EPS; y < VIEW_HEIGHT - EPS * 2.f; y += H) {
 		for (float x = VIEW_WIDTH / 4; x <= VIEW_WIDTH / 2; x += H) {
-			if (particles.size() < DAM_BREAK_PARTICLES) {
+			if (particleCount < DAM_BREAK_PARTICLES) {
 				float jitter = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-				particles.emplace_back(x + jitter, y, particles.size());
+				particles[particleCount] = Particle(x + jitter, y, particleCount);
+				particleCount++;
 			}
 			else {
 				return;
@@ -60,15 +62,16 @@ void Simulation::InitSPH() {
 }
 
 void Simulation::AddParticleRectangle() {
-	if (particles.size() >= MAX_PARTICLES) {
-		std::cout << "maximum number of particles reached " << MAX_PARTICLES << std::endl;
+	if (particleCount >= MAX_PARTICLES) {
+		std::cout << "Maximum number of particles reached " << MAX_PARTICLES << std::endl;
 	}
 	else {
 		unsigned int placed = 0;
 		for (float y = VIEW_HEIGHT / 1.5f - VIEW_HEIGHT / 5.f; y < VIEW_HEIGHT / 1.5f + VIEW_HEIGHT / 5.f; y += H * 0.95f) {
 			for (float x = VIEW_WIDTH / 2.f - VIEW_HEIGHT / 5.f; x <= VIEW_WIDTH / 2.f + VIEW_HEIGHT / 5.f; x += H * 0.95f) {
-				if (placed++ < BLOCK_PARTICLES && particles.size() < MAX_PARTICLES) {
-					particles.push_back(Particle(x, y, particles.size()));
+				if (placed++ < BLOCK_PARTICLES && particleCount < MAX_PARTICLES) {
+					particles[particleCount] = Particle(x, y, particleCount);
+					particleCount++;
 				}
 			}
 		}
@@ -93,7 +96,9 @@ void Simulation::SetDefaultParameters() {
 
 void Simulation::windowRescaleRoutine(int prevWidth, int prevHeight) {
 	// rescale positions of particles
-	for (Particle& p : particles) {
+	for (int i = 0; i < particleCount; i++) {
+		Particle& p = particles[i];
+
 		p.position.x = (p.position.x * VIEW_WIDTH) / prevWidth;
 		p.position.y = (p.position.y * VIEW_HEIGHT) / prevHeight;
 	}
@@ -102,7 +107,7 @@ void Simulation::windowRescaleRoutine(int prevWidth, int prevHeight) {
 	int dimX = (VIEW_WIDTH + EPS) / (2.f * H);
 	int dimY = (VIEW_HEIGHT + EPS) / (2.f * H);
 
-	particleGrid.Initialize(dimX, dimY, particles);
+	particleGrid.Initialize(dimX, dimY);
 
 	if (useSpatialGrid) {
 		particleGrid.Update();
@@ -110,7 +115,8 @@ void Simulation::windowRescaleRoutine(int prevWidth, int prevHeight) {
 }
 
 void Simulation::ComputeDensityPressure() {
-	for (Particle& pi : particles) {
+	for (int i = 0; i < particleCount; i++) {
+		Particle& pi = particles[i];
 		pi.rho = 0.f;
 
 		std::vector<int> potentialNeighbours;
@@ -132,7 +138,9 @@ void Simulation::ComputeDensityPressure() {
 }
 
 void Simulation::ComputeForces() {
-	for (Particle& pi : particles) {
+	for (int i = 0; i < particleCount; i++) {
+		Particle& pi = particles[i];
+
 		MyVec2 fpress(0.f, 0.f);
 		MyVec2 fvisc(0.f, 0.f);
 
@@ -162,7 +170,9 @@ void Simulation::ComputeForces() {
 }
 
 void Simulation::Integrate(float deltaTime) {
-	for (Particle& p : particles) {
+	for (int i = 0; i < particleCount; i++) {
+		Particle& p = particles[i];
+
 		// forward Euler integration
 		if (p.rho > 0.0f) {
 			p.velocity += deltaTime * p.force / p.rho;
@@ -198,7 +208,7 @@ void Simulation::GetNeighbourParticlesIndices(int particleID, std::vector<int>& 
 		particleGrid.GetNeighbourParticlesIndices(particleID, indices);
 	}
 	else {
-		for (int i = 0; i < particles.size(); i++) {
+		for (int i = 0; i < particleCount; i++) {
 			indices.push_back(i);
 		}
 	}

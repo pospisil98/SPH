@@ -48,6 +48,7 @@ static void error_callback(int error, const char* description)
 }
 
 Simulation simulation;
+MyCudaWrapper cudaWrapper;
 
 double  t;
 double  t_old = 0.f;
@@ -71,8 +72,8 @@ void Render(GLFWwindow* window) {
 
 	glBegin(GL_POINTS);
 
-	for (Particle& p : simulation.particles) {
-		glVertex2f(p.position.x, p.position.y);
+	for (int i = 0; i < simulation.particleCount; i++) {
+		glVertex2f(simulation.particles[i].position.x, simulation.particles[i].position.y);
 	}
 
 	glEnd();
@@ -124,16 +125,16 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 
 	//simulation.windowRescaleRoutine(ogWidth, ogHeight);
 		// rescale positions of particles
-	for (Particle& p : simulation.particles) {
-		p.position.x = (p.position.x * simulation.VIEW_WIDTH) / ogWidth;
-		p.position.y = (p.position.y * simulation.VIEW_HEIGHT) / ogHeight;
+	for (int i = 0; i < simulation.particleCount; i++) {
+		simulation.particles[i].position.x = (simulation.particles[i].position.x * simulation.VIEW_WIDTH) / ogWidth;
+		simulation.particles[i].position.y = (simulation.particles[i].position.y * simulation.VIEW_HEIGHT) / ogHeight;
 	}
 
 	// Update uniform grid
 	int dimX = (simulation.VIEW_WIDTH + EPS) / (2.f * H);
 	int dimY = (simulation.VIEW_HEIGHT + EPS) / (2.f * H);
 
-	simulation.particleGrid.Initialize(dimX, dimY, simulation.particles);
+	simulation.particleGrid.Initialize(dimX, dimY);
 
 	if (simulation.useSpatialGrid) {
 		simulation.particleGrid.Update();
@@ -183,7 +184,7 @@ void RenderGUIControlPanel() {
 
 	ImGui::Spacing();
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-	ImGui::Text("Particle count: %d", simulation.particles.size());
+	ImGui::Text("Particle count: %d", simulation.particleCount);
 	ImGui::End();
 
 
@@ -260,9 +261,19 @@ int main(void)
 		ImGui_ImplOpenGL3_Init(glsl_version);
 	}
 
+	//cudaWrapper.init(simulation);
+
 	// Initialize SPH simulation
 	simulation.Initialize();
 	simulation.InitSPH();
+
+	// Test ability to map host memory (from some page-lock tutorial)
+	cudaDeviceProp deviceProp;
+	cudaGetDeviceProperties(&deviceProp, 0);
+	if (!deviceProp.canMapHostMemory) {
+		fprintf(stderr, "Device %d cannot map host memory!\n", 0);
+		exit(EXIT_FAILURE);
+	}
 
 	// Test CUDA call
 	const int arraySize = 5;
