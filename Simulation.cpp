@@ -16,6 +16,8 @@ void Simulation::Reset()
 	delete particles;
 	particles = new Particle[MAX_PARTICLES];
 
+	particleCount = 0;
+
 	InitSPH();
 }
 
