@@ -113,31 +113,7 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
 	glViewport(0, 0, fbWidth, fbHeight);
 
-	int ogWidth = simulation.VIEW_WIDTH;
-	int ogHeight = simulation.VIEW_HEIGHT;
-
-	// Update window properties
-	simulation.WINDOW_WIDTH = width * 1.5f;
-	simulation.WINDOW_HEIGHT = height * 1.5f;
-	simulation.VIEW_WIDTH = 1.5f * simulation.WINDOW_WIDTH;
-	simulation.VIEW_HEIGHT = 1.5f * simulation.WINDOW_HEIGHT;
-
-	//simulation.windowRescaleRoutine(ogWidth, ogHeight);
-		// rescale positions of particles
-	for (int i = 0; i < simulation.particleCount; i++) {
-		simulation.particles[i].position.x = (simulation.particles[i].position.x * simulation.VIEW_WIDTH) / ogWidth;
-		simulation.particles[i].position.y = (simulation.particles[i].position.y * simulation.VIEW_HEIGHT) / ogHeight;
-	}
-
-	// Update uniform grid
-	int dimX = (simulation.VIEW_WIDTH + EPS) / (2.f * H);
-	int dimY = (simulation.VIEW_HEIGHT + EPS) / (2.f * H);
-
-	simulation.particleGrid.Initialize(dimX, dimY);
-
-	if (simulation.useSpatialGrid) {
-		simulation.particleGrid.Update();
-	}
+	simulation.windowRescaleRoutine(width, height);
 }
 
 void InitGL() {
@@ -169,6 +145,14 @@ void RenderGUIControlPanel() {
 	ImGui::SliderFloat("Gas constant", &simulation.GAS_CONST, 500.0f, 6000.0f);
 
 	ImGui::Spacing();
+	ImGui::Text("Gravity: (%f, %f)", simulation.G.x, simulation.G.y);
+	if (ImGui::Button("Toggle Gravity")) {
+		if (simulation.G.x != 0.0f || simulation.G.y != 0.0f) {
+			simulation.G = MyVec2(0.0f, 0.0f);
+		} else {
+			simulation.G = MyVec2(0.0f, -GRAVITY_VAL);
+		}
+	}
 	if (ImGui::Button("Reset parameters to default")) {
 		simulation.SetDefaultParameters();
 	}

@@ -75,5 +75,5 @@ struct Simulation {
 
 	void GetNeighbourParticlesIndices(int particleID, std::vector<int>& indices);
 
-	void windowRescaleRoutine(int prevWidth, int prevHeight);
+	void windowRescaleRoutine(int width, int height);
 };

@@ -30,6 +30,11 @@ void MyCudaWrapper::Init(Simulation& simulation) {
 	std::cout << "GPU initialized" << std::endl;
 }
 
+void MyCudaWrapper::WindowSizeChange(Simulation& simulation) {
+	cudaFree(&simulation.particleGrid.gridDevice);
+	CHECK_ERROR(cudaMalloc((void**)&simulation.particleGrid.gridDevice, simulation.particleGrid.grid.size() * sizeof(int)));
+}
+
 void MyCudaWrapper::Update(Simulation& simulation, float timeStep) {
 	// copy spatial grid to device
 	CopyGridHostToDevice(simulation);
@@ -43,12 +48,12 @@ void MyCudaWrapper::Update(Simulation& simulation, float timeStep) {
 	unsigned int blockCount = std::ceil((float)simulation.particleCount / 256);
 
 	densityPressureKernel << <blockCount, 256 >> > (simulation.particleCount, simulation.particlesDevice, simulation.particleGrid, simulation.MASS, simulation.GAS_CONST, simulation.REST_DENS);
-	CHECK_ERROR(cudaDeviceSynchronize());
+	//CHECK_ERROR(cudaDeviceSynchronize());
 	forceKernel << <blockCount, 256 >> > (simulation.particleCount, simulation.particlesDevice, simulation.particleGrid, simulation.MASS, simulation.VISC, simulation.G);
-	CHECK_ERROR(cudaDeviceSynchronize());
+	//CHECK_ERROR(cudaDeviceSynchronize());
 	integrateKernel << <blockCount, 256 >> > (simulation.particleCount, simulation.particlesDevice, timeStep, simulation.BOUND_DAMPING, simulation.VIEW_WIDTH, simulation.VIEW_HEIGHT);
 
-	CHECK_ERROR(cudaDeviceSynchronize());
+	//CHECK_ERROR(cudaDeviceSynchronize());
 
 	// copy particles back to host
 	CopyParticlesDeviceToHost(simulation);
