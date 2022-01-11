@@ -7,6 +7,11 @@
 #include <ostream>
 #include <math.h>
 
+/// <summary>
+/// Struct representing 2D vector
+/// 
+/// Comments are not necessary I think.
+/// </summary>
 struct MyVec2 {
 	float x;
 	float y;
@@ -69,5 +74,3 @@ template <typename T>
 inline  __host__ __device__ MyVec2 operator*(T scalar, MyVec2 const& vec) {
 	return vec * scalar;
 }
-
-std::ostream& operator<<(std::ostream& os, MyVec2& v);

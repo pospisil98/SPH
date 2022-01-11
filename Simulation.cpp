@@ -1,5 +1,23 @@
 #include "Simulation.h"
 
+void Simulation::Initialize() {
+	// Do grid initialization everytime to be able to switch acceleration on and off
+	int dimX = (VIEW_WIDTH + EPS) / (2.f * H);
+	int dimY = (VIEW_HEIGHT + EPS) / (2.f * H);
+	particleGrid.particles = particles;
+	particleGrid.Initialize(dimX, dimY);
+
+	// Initialize cuda wrapper - memory registrations and allocations
+	cudaWrapper.Init(*this);
+}
+
+void Simulation::Reset()
+{
+	delete particles;
+	particles = new Particle[MAX_PARTICLES];
+
+	InitSPH();
+}
 
 void Simulation::Update(float timeStep) {
 	timeStep = fixedTimestep ? DT : timeStep;
@@ -10,30 +28,14 @@ void Simulation::Update(float timeStep) {
 
 	if (simulateOnGPU && useSpatialGrid) {
 		cudaWrapper.Update(*this, timeStep);
-	} else {
+	}
+	else {
 
 		ComputeDensityPressure();
 		ComputeForces();
 
 		Integrate(timeStep);
 	}
-}
-
-void Simulation::Initialize() {
-	// Do grid initialization everytime to be able to switch acceleration on and off
-	int dimX = (VIEW_WIDTH + EPS) / (2.f * H);
-	int dimY = (VIEW_HEIGHT + EPS) / (2.f * H);
-
-	particleGrid.particles = particles;
-	particleGrid.Initialize(dimX, dimY);
-
-	cudaWrapper.Init(*this);
-}
-
-void Simulation::Reset()
-{
-	particles = new Particle[MAX_PARTICLES];
-	InitSPH();
 }
 
 void Simulation::InitSPH() {

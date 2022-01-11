@@ -2,7 +2,6 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
-#include "kernel.cuh"
 #include "CudaFunctions.cuh"
 
 // Include standard headers
@@ -42,21 +41,25 @@ using namespace glm;
 
 #define PIXEL_FORMAT GL_RGB
 
-static void error_callback(int error, const char* description)
-{
-	fputs(description, stderr);
-}
-
+/// <summary> SPH simulation struct </summary>
 Simulation simulation;
 
+/// <summary> Current time in game loop </summary>
 double  t;
+/// <summary> Time of last frame update </summary>
 double  t_old = 0.f;
+/// <summary> Time elapsed from last frame update </summary>
 double  dt;
 
+/// <summary> Color which is used as background </summary>
 ImVec4 clearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.0f);
+/// <summary> Color of the particles </summary>
 ImVec4 particlesColor = ImVec4(0.f, 0.f, 0.f, 1.0f);
 
-void Render(GLFWwindow* window) {
+/// <summary>
+/// Renders simulation
+/// </summary>
+void Render() {
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	glLoadIdentity();
@@ -78,6 +81,9 @@ void Render(GLFWwindow* window) {
 	glEnd();
 }
 
+/// <summary>
+/// Function responsible for kandling user key presses
+/// </summary>
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
@@ -106,6 +112,12 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 }
 
+/// <summary>
+/// Callback after window resizing
+/// </summary>
+/// <param name="window">Window which was resized</param>
+/// <param name="width">New window width</param>
+/// <param name="height">New window height</param>
 void window_size_callback(GLFWwindow* window, int width, int height)
 {
 	// Update OpenGL viewport
@@ -113,9 +125,21 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
 	glViewport(0, 0, fbWidth, fbHeight);
 
+	// Udpate simulation
 	simulation.windowRescaleRoutine(width, height);
 }
 
+/// <summary>
+/// Callback for GLFW errors
+/// </summary>
+static void ErrorCallback(int, const char* err_str)
+{
+	std::cout << "GLFW Error: " << err_str << std::endl;
+}
+
+/// <summary>
+/// Iniitalizes OpenGL stuff
+/// </summary>
 void InitGL() {
 	glClearColor(0.9f, 0.9f, 0.9f, 1);
 	glEnable(GL_POINT_SMOOTH);
@@ -123,6 +147,29 @@ void InitGL() {
 	glMatrixMode(GL_PROJECTION);
 }
 
+/// <summary>
+/// Initializes ImGUI stuff
+/// </summary>
+/// <param name="glsl_version">Version of OpenGL being used</param>
+void InitImGUI(const char* glsl_version) {
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+	// Setup Dear ImGui style
+	//ImGui::StyleColorsDark();
+	ImGui::StyleColorsClassic();
+
+	// Setup Platform/Renderer backends
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init(glsl_version);
+}
+
+/// <summary>
+/// Renders simulation controls using ImGUI
+/// </summary>
 void RenderGUIControlPanel() {
 	// Start the Dear ImGui frame
 	ImGui_ImplOpenGL3_NewFrame();
@@ -179,7 +226,7 @@ void RenderGUIControlPanel() {
 
 int main(void)
 {
-	glfwSetErrorCallback(error_callback);
+	glfwSetErrorCallback(ErrorCallback);
 
 	// Initialize the library
 	if (!glfwInit())
@@ -218,31 +265,30 @@ int main(void)
 	// Make the window's context current
 	glfwMakeContextCurrent(window);
 
+	// Set correct event calbacks
 	glfwSetKeyCallback(window, key_callback);
 	glfwSetWindowSizeCallback(window, window_size_callback);
 
 	// TODO: unlimited FPS / cap to screen refresh rate
 	glfwSwapInterval(0);
 
+	// Initialize open GL
 	InitGL();
 
-
 	// ImGui setup
-	{
-		IMGUI_CHECKVERSION();
-		ImGui::CreateContext();
-		ImGuiIO& io = ImGui::GetIO(); (void)io;
-		//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-		//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
-		// Setup Dear ImGui style
-		//ImGui::StyleColorsDark();
-		ImGui::StyleColorsClassic();
+	// Setup Dear ImGui style
+	//ImGui::StyleColorsDark();
+	ImGui::StyleColorsClassic();
 
-		// Setup Platform/Renderer backends
-		ImGui_ImplGlfw_InitForOpenGL(window, true);
-		ImGui_ImplOpenGL3_Init(glsl_version);
-	}
+	// Setup Platform/Renderer backends
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init(glsl_version);
 
 	// Initialize SPH simulation
 	//simulation.Initialize();
@@ -259,15 +305,21 @@ int main(void)
 	// Loop until the user closes the window 
 	while (!glfwWindowShouldClose(window))
 	{
+		// Process GLFW events eg. keypress, widnow resize
 		glfwPollEvents();
 
+		// Compute time between frames
 		t = glfwGetTime();
 		dt = t - t_old;
 		t_old = t;
 		
+		// Update simulation
 		simulation.Update(dt);
 		
-		Render(window);
+		// Render simulation
+		Render();
+
+		// Render ImGUI control panel
 		RenderGUIControlPanel();
 
 		glfwSwapBuffers(window);
