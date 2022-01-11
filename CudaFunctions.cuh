@@ -33,6 +33,7 @@ struct MyCudaWrapper {
 
 	void CopyGridHostToDevice(Simulation& simulation);
 
+	void WindowSizeChange(Simulation& simulation);
 };
 
 __global__ void densityPressureKernel(int particleCount, Particle* particles, ParticleGrid grid, float MASS, float GAS_CONST, float REST_DENS);

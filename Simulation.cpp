@@ -79,13 +79,20 @@ void Simulation::SetDefaultParameters() {
 	BOUND_DAMPING = -0.5f;
 }
 
-void Simulation::windowRescaleRoutine(int prevWidth, int prevHeight) {
+void Simulation::windowRescaleRoutine(int width, int height) {
+	int ogWidth = VIEW_WIDTH;
+	int ogHeight = VIEW_HEIGHT;
+
+	// Update window properties
+	WINDOW_WIDTH = width * 1.5f;
+	WINDOW_HEIGHT = height * 1.5f;
+	VIEW_WIDTH = 1.5f * WINDOW_WIDTH;
+	VIEW_HEIGHT = 1.5f * WINDOW_HEIGHT;
+
 	// rescale positions of particles
 	for (int i = 0; i < particleCount; i++) {
-		Particle& p = particles[i];
-
-		p.position.x = (p.position.x * VIEW_WIDTH) / prevWidth;
-		p.position.y = (p.position.y * VIEW_HEIGHT) / prevHeight;
+		particles[i].position.x = (particles[i].position.x * VIEW_WIDTH) / ogWidth;
+		particles[i].position.y = (particles[i].position.y * VIEW_HEIGHT) / ogHeight;
 	}
 
 	// Update uniform grid
@@ -97,6 +104,8 @@ void Simulation::windowRescaleRoutine(int prevWidth, int prevHeight) {
 	if (useSpatialGrid) {
 		particleGrid.Update();
 	}
+
+	cudaWrapper.WindowSizeChange(*this);
 }
 
 void Simulation::ComputeDensityPressure() {
