@@ -35,7 +35,7 @@ struct Simulation {
 	/// <summary> Flag controlling usage of acceleration structure </summary>
 	bool useSpatialGrid = true;
 	/// <summary> Flag controlling CPU/GPU computations </summary>
-	bool simulateOnGPU = true;
+	bool simulateOnGPU = false;
 	/// <summary> Flag controlling usage of fixed timestep (adapive pretty much doesnt work so..) </summary>
 	bool fixedTimestep = true;
 
@@ -52,9 +52,9 @@ struct Simulation {
 	int particleCount = 0;
 
 	/// <summary> Maximum number of particles in simulation </summary>
-	int MAX_PARTICLES = 15000;
+	int MAX_PARTICLES = 20000;
 	/// <summary> Number of particles used in initial dam break scenario </summary>
-	int DAM_BREAK_PARTICLES = 100;
+	int DAM_BREAK_PARTICLES = 2048;
 	/// <summary> Number of particles being added in block </summary>
 	int BLOCK_PARTICLES = 400;
 
@@ -79,6 +79,8 @@ struct Simulation {
 
 	~Simulation() {
 		delete particles;
+
+		cudaWrapper.Finalize(*this);
 	}
 
 	/// <summary>

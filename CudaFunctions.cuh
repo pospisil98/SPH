@@ -28,6 +28,12 @@ struct MyCudaWrapper {
 	void Init(Simulation& simulation);
 
 	/// <summary>
+	/// Clears all memory and so on.
+	/// </summary>
+	/// <param name="simulation">Reference to simulation class</param>
+	void Finalize(Simulation& simulation);
+
+	/// <summary>
 	/// Updates simulation on GPU (assuming that grid has been updated already)
 	/// </summary>
 	/// <param name="simulation">Reference to simulation</param>

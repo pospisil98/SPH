@@ -294,6 +294,8 @@ int main(void)
 	//simulation.Initialize();
 	simulation.InitSPH();
 
+	// std::cout << "Particle count at start: " << simulation.particleCount << std::endl;
+
 	// Test ability to map host memory (from some page-lock tutorial)
 	cudaDeviceProp deviceProp;
 	cudaGetDeviceProperties(&deviceProp, 0);

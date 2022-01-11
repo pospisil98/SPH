@@ -16,7 +16,7 @@ void MyCudaWrapper::Init(Simulation& simulation) {
 	// Allocate space for spatial grid
 	CHECK_ERROR(cudaMalloc((void**)&simulation.particleGrid.gridDevice, simulation.particleGrid.grid.size() * sizeof(int)));
 
-	std::cout << "Allocated " << simulation.particleGrid.grid.size() * sizeof(int) << "for grid" << std::endl;
+	//std::cout << "Allocated " << simulation.particleGrid.grid.size() * sizeof(int) << " for grid" << std::endl;
 
 	// Page-lock host location of spatial grid
 	// TODO: fix :(
@@ -27,11 +27,15 @@ void MyCudaWrapper::Init(Simulation& simulation) {
 	CopyGridHostToDevice(simulation);
 
 	CHECK_ERROR(cudaDeviceSynchronize());
-	std::cout << "GPU initialized" << std::endl;
+}
+
+void MyCudaWrapper::Finalize(Simulation& simulation) {
+	CHECK_ERROR(cudaFree(simulation.particlesDevice));
+	CHECK_ERROR(cudaFree(simulation.particleGrid.gridDevice));
 }
 
 void MyCudaWrapper::WindowSizeChange(Simulation& simulation) {
-	cudaFree(&simulation.particleGrid.gridDevice);
+	CHECK_ERROR(cudaFree(simulation.particleGrid.gridDevice));
 	CHECK_ERROR(cudaMalloc((void**)&simulation.particleGrid.gridDevice, simulation.particleGrid.grid.size() * sizeof(int)));
 }
 
@@ -45,13 +49,14 @@ void MyCudaWrapper::Update(Simulation& simulation, float timeStep) {
 	CHECK_ERROR(cudaDeviceSynchronize());
 
 	// call kernels
-	unsigned int blockCount = std::ceil((float)simulation.particleCount / 256);
+	unsigned int threadCount = 256;
+	unsigned int blockCount = std::ceil((float)simulation.particleCount / threadCount);
 
-	densityPressureKernel << <blockCount, 256 >> > (simulation.particleCount, simulation.particlesDevice, simulation.particleGrid, simulation.MASS, simulation.GAS_CONST, simulation.REST_DENS);
+	densityPressureKernel << <blockCount, threadCount >> > (simulation.particleCount, simulation.particlesDevice, simulation.particleGrid, simulation.MASS, simulation.GAS_CONST, simulation.REST_DENS);
 	//CHECK_ERROR(cudaDeviceSynchronize());
-	forceKernel << <blockCount, 256 >> > (simulation.particleCount, simulation.particlesDevice, simulation.particleGrid, simulation.MASS, simulation.VISC, simulation.G);
+	forceKernel << <blockCount, threadCount >> > (simulation.particleCount, simulation.particlesDevice, simulation.particleGrid, simulation.MASS, simulation.VISC, simulation.G);
 	//CHECK_ERROR(cudaDeviceSynchronize());
-	integrateKernel << <blockCount, 256 >> > (simulation.particleCount, simulation.particlesDevice, timeStep, simulation.BOUND_DAMPING, simulation.VIEW_WIDTH, simulation.VIEW_HEIGHT);
+	integrateKernel << <blockCount, threadCount >> > (simulation.particleCount, simulation.particlesDevice, timeStep, simulation.BOUND_DAMPING, simulation.VIEW_WIDTH, simulation.VIEW_HEIGHT);
 
 	//CHECK_ERROR(cudaDeviceSynchronize());
 

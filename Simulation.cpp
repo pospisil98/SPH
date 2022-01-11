@@ -127,7 +127,6 @@ void Simulation::ComputeDensityPressure() {
 			float r2 = rij.LengthSquared();
 
 			if (r2 < HSQ) {
-				//std::cout << "Collision in Density for id: " << pi.id << " and " << pj.id << std::endl;
 				pi.rho += MASS * POLY6 * pow(HSQ - r2, 3.f);
 			}
 		}
