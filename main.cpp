@@ -291,7 +291,6 @@ int main(void)
 	ImGui_ImplOpenGL3_Init(glsl_version);
 
 	// Initialize SPH simulation
-	//simulation.Initialize();
 	simulation.InitSPH();
 
 	// std::cout << "Particle count at start: " << simulation.particleCount << std::endl;

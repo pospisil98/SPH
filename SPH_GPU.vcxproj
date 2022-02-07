@@ -13,6 +13,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{A277E481-5828-427F-A5E8-24563556E9FE}</ProjectGuid>
     <RootNamespace>SPH_GPU</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -41,19 +42,20 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;WIN64;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>H:\Documents\GPU\SPH_GPU\GL\GLEW\include;H:\Documents\GPU\SPH_GPU\GL\GLFW\include;H:\Documents\GPU\SPH_GPU\GL\glm;H:\Documents\GPU\SPH_GPU\GL\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\GL\GLEW\include;$(ProjectDir)\GL\GLFW\include;$(ProjectDir)\GL\glm;$(ProjectDir)\GL\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <AdditionalDependencies>opengl32.lib;glfw3.lib;glfw3dll.lib;glew32.lib;cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>H:\Documents\GPU\SPH_GPU\GL\GLEW\lib\Release\x64;H:\Documents\GPU\SPH_GPU\GL\GLFW\lib-vc2019;H:\Documents\GPU\SPH_GPU\GL\imgui;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)\GL\GLEW\lib\Release\x64;$(ProjectDir)\GL\GLFW\lib-vc2019;$(ProjectDir)\GL\imgui;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
@@ -66,7 +68,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;WIN64;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>H:\Documents\GPU\SPH_GPU\GL\GLEW\include;H:\Documents\GPU\SPH_GPU\GL\GLFW\include;H:\Documents\GPU\SPH_GPU\GL\glm;H:\Documents\GPU\SPH_GPU\GL\imgui;%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\GL\GLEW\include;$(ProjectDir)\GL\GLFW\include;$(ProjectDir)\GL\glm;$(ProjectDir)\GL\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -74,14 +76,14 @@
       <OptimizeReferences>true</OptimizeReferences>
       <SubSystem>Console</SubSystem>
       <AdditionalDependencies>opengl32.lib;glfw3.lib;glfw3dll.lib;glew32.lib;cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>H:\Documents\GPU\SPH_GPU\GL\GLEW\lib\Release\x64;H:\Documents\GPU\SPH_GPU\GL\GLFW\lib-vc2019;H:\Documents\GPU\SPH_GPU\GL\imgui;%(AdditionalLibraryDirectories);$(CudaToolkitLibDir)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)\GL\GLEW\lib\Release\x64;$(ProjectDir)\GL\GLFW\lib-vc2019;$(ProjectDir)\GL\imgui;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CudaCompile Include="kernel.cu" />
+    <CudaCompile Include="CudaFunctions.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GL\imgui\backends\imgui_impl_glfw.cpp" />
@@ -94,8 +96,12 @@
     <ClCompile Include="main.cpp">
       <FileType>CppCode</FileType>
     </ClCompile>
+    <ClCompile Include="ParticleGrid.cpp" />
+    <ClCompile Include="Simulation.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Constants.h" />
+    <ClInclude Include="CudaFunctions.cuh" />
     <ClInclude Include="GL\GLEW\include\GL\glew.h" />
     <ClInclude Include="GL\GLFW\include\GLFW\glfw3.h" />
     <ClInclude Include="GL\glm\glm\glm.hpp" />
@@ -108,6 +114,10 @@
     <ClInclude Include="GL\imgui\imstb_textedit.h" />
     <ClInclude Include="GL\imgui\imstb_truetype.h" />
     <ClInclude Include="kernel.cuh" />
+    <ClInclude Include="MyVec2.h" />
+    <ClInclude Include="Particle.h" />
+    <ClInclude Include="ParticleGrid.h" />
+    <ClInclude Include="Simulation.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
